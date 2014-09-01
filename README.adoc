@@ -265,7 +265,7 @@ Arguments::
 2. _Option Definition_ `Hash[String, Any]`: Where `String` is the _option specification_ and `Any`, _option destination_ can be `Symbol`, or a _procedure_ (lambda, procedure, method). See <<option_definition,Option Definition>> for details.
 
 Returns::
-1. _Options Hash_ `Map[Symbol,Any]`: where `Any` can be a `String`, `Integer`, `Float`, `Array[String]`, `Array[Integer]`, `Array[Float]` (And eventually `Hash` of `String`, `Integer` and `Float`, see <<Roadmap>>).
+1. _Options Hash_ `Map[Symbol,Any]`: where `Any` can be a `String`, `Integer`, `Float`, `Array[String]`, `Array[Integer]`, `Array[Float]` And `Hash` of `String`, `Integer` and `Float`.
 2. _Remaining Array_ `Array[String]`: `Array` of non-options arguments, `pass_through` <<options>>, or any argument after the `--` identifier.
 
 == Features
@@ -300,7 +300,20 @@ Returns::
 
 == How to install it
 
-TODO
+. Get it from rubygems:
++
+`gem install 'ruby-getoptions'`
+
+. Then test it in `irb`:
+
+  2.1.2 :001 > require 'ruby-getoptions'
+  => true
+  2.1.2 :002 > options, remaining = GetOptions.parse(['world', '-t', 'hello'], {'t=s' => :test})
+  => [{:test=>"hello"}, ["world"]]
+
+. Enjoy!
+
+
 
 == Dependencies
 
