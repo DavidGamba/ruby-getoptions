@@ -3,6 +3,7 @@
 $LOAD_PATH << File.join(File.dirname(__FILE__), '../lib')
 
 require 'ruby-getoptions'
+require 'minitest'
 require 'minitest/autorun'
 
 describe GetOptions do
