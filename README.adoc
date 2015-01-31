@@ -5,6 +5,56 @@ David Gamba, https://github.com/DavidGamba
 
 Ruby option parser based on Perl's Getopt::Long.
 
+image:https://badge.fury.io/rb/ruby-getoptions.svg["Gem Version", link="http://badge.fury.io/rb/ruby-getoptions"]
+image:https://coveralls.io/repos/DavidGamba/ruby-getoptions/badge.svg["Coverage Status", link="https://coveralls.io/r/DavidGamba/ruby-getoptions"]
+image:https://codeclimate.com/github/DavidGamba/ruby-getoptions/badges/gpa.svg["Code Climate", link="https://codeclimate.com/github/DavidGamba/ruby-getoptions"]
+image:https://codeclimate.com/github/DavidGamba/ruby-getoptions/badges/coverage.svg["Test Coverage", link="https://codeclimate.com/github/DavidGamba/ruby-getoptions"]
+
+== Quick overview
+
+1. Define your command line specification:
++
+[source,ruby,subs=attributes]
+----
+require 'ruby-getoptions'
+
+options, remaining = GetOptions.parse(ARGV, {
+  "f|flag"      => :flag,
+  "string=s"    => :string,
+  "int=i"       => :int,
+  "float=f"     => :float,
+  "procedure"   => lambda { puts 'Hello world! :-)' }
+  "help"        => lambda { print_synopsis() }
+  "man"         => lambda { launch_manpage() },
+  "version"     => lambda { puts 'Version is {version}' },
+})
+----
+
+2. Pass cmdline arguments:
++
+----
+$ ./myscript non-option -f --string=mystring -i 7 --float 3.14 --p --version non-option2 -- --nothing
+----
+
+3. It will run the higher order functions that were called on the cmdline:
++
+[subs=attributes]
+----
+Hello world!
+Version is {version}
+----
+
+4. Internally it will return an array with the arguments that are not options and anything after the `--` identifier, and a Hash with the values of the options that were passed:
++
+----
+remaining = ['non-option', 'non-option2', '--nothing']
+
+options   = {:flag   => true,
+             :string => 'mystring',
+             :int    => 7,
+             :float  => 3.14}
+----
+
 == Synopsis
 
 [source,ruby]
@@ -85,51 +135,6 @@ a|*Optional with increment*, Not supported yet. Does it make sense to?
 ////
 
 Options:: `fail_on_unknown`, `pass_through`.
-
-== Quick overview
-
-1. Define your command line specification:
-+
-[source,ruby,subs=attributes]
-----
-require 'ruby-getoptions'
-
-options, remaining = GetOptions.parse(ARGV, {
-  "f|flag"      => :flag,
-  "string=s"    => :string,
-  "int=i"       => :int,
-  "float=f"     => :float,
-  "procedure"   => lambda { puts 'Hello world! :-)' }
-  "help"        => lambda { print_synopsis() }
-  "man"         => lambda { launch_manpage() },
-  "version"     => lambda { puts 'Version is {version}' },
-})
-----
-
-2. Pass cmdline arguments:
-+
-----
-$ ./myscript non-option -f --string=mystring -i 7 --float 3.14 --p --version non-option2 -- --nothing
-----
-
-3. It will run the higher order functions that were called on the cmdline:
-+
-[subs=attributes]
-----
-Hello world!
-Version is {version}
-----
-
-4. Internally it will return an array with the arguments that are not options and anything after the `--` identifier, and a Hash with the values of the options that were passed:
-+
-----
-remaining = ['non-option', 'non-option2', '--nothing']
-
-options   = {:flag   => true,
-             :string => 'mystring',
-             :int    => 7,
-             :float  => 3.14}
-----
 
 == Description
 
