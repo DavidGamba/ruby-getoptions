@@ -8,6 +8,7 @@ GEM
       slop (~> 3.4, >= 3.4.5)
     powerpack (0.0.9)
     rainbow (2.0.0)
+    rake (10.4.2)
     rubocop (0.25.0)
       parser (>= 2.2.0.pre.4, < 3.0)
       powerpack (~> 0.0.6)
@@ -21,4 +22,5 @@ PLATFORMS
 
 DEPENDENCIES
   minitest
+  rake
   rubocop
