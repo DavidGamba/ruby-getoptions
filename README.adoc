@@ -2,6 +2,7 @@
 David Gamba, https://github.com/DavidGamba
 :version: 0.1
 :idprefix:
+:name: ruby-getoptions
 
 Ruby option parser based on Perl's Getopt::Long.
 
@@ -49,13 +50,88 @@ Version is {version}
 ----
 remaining = ['non-option', 'non-option2', '--nothing']
 
-options   = {:flag   => true,
-             :string => 'mystring',
-             :int    => 7,
-             :float  => 3.14}
+options   = {:flag   => true,       # Boolean
+             :string => 'mystring', # String
+             :int    => 7,          # Integer
+             :float  => 3.14}       # Float
 ----
 
+[[operation_modes]]
+== Operation Modes
+
+{name} can receive arguments to an option after the space, `--option argument_to_option`, or without the space (depending on the _operation mode_), `--option=argument`. See below for details on how to pass arguments without the space:
+
+
+=== Normal Mode (default)
+
+|===
+|Given argument |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"opt"`, argument: `nil`
+
+|-opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
+
+
+=== Bundling Mode
+
+Set by defining `{mode: "bundling"}` in the options hash.
+
+|===
+|Given option |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"o"`, argument: `nil` +
+option: `"p"`, argument: `nil` +
+option: `"t"`, argument: `nil`
+
+|-opt=arg
+a|option: `"o"`, argument: `nil` +
+option: `"p"`, argument: `nil` +
+option: `"t"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
+
+=== Enforce Single Dash Mode
+
+Set by defining `{mode: "enforce_single_dash"}` in the options hash.
+
+|===
+|Given option |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"o"`, argument: `"pt"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt=arg
+a|option: `"o"`, argument: `"pt=arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
+
+
 == Synopsis
+
+Quick reference of all the _option definitions_ available.
 
 [source,ruby]
 ----
@@ -138,9 +214,9 @@ Options:: `fail_on_unknown`, `pass_through`.
 
 == Description
 
-It will take an `Array[String]` (normally `ARGV`) and a `Hash[String, Object]` (option definition) and it will return a `Hash[Symbol, Object]` (options) of the given arguments and an `Array[String]` (remaining) of the remaining arguments.
+It will take an `Array[String]` (normally `ARGV`, referred to as _arguments_) and a `Hash[String, Object]` (_option definition_) and it will return a `Hash[Symbol, Object]` (_options_) of the given arguments and an `Array[String]` (_remaining_) of the remaining arguments.
 
-It will also excecute any _procedures_ (lamba, procedure, method) in the order their corresponding options were passsed on the command line, and only if they were passed (using the `call` method).
+It will also excecute any _procedures_ (lamba, procedure, method) in the order their corresponding options were passsed on the command line, and only if they were passed (they get executed using the `call` method).
 
 `GetOptions.parse` will `abort` or `fail` if the command line options could not be processed successfully (input error), or if they were defined improperly. See <<errors_exceptions,Errors and Exceptions>> for details.
 
@@ -296,12 +372,21 @@ Returns::
 
 `pass_through`:: disable warning on unknown option. Defalt: `false`.
 
+`mode`:: possible values are "normal", "bundling", "enforce_single_dash". See <<operation_modes>> for details.
+
 [[errors_exceptions]]
 == Errors and Exceptions
 
 * For incorrect _option definitions_ in the script itself it will `fail` with `ArgumentError`.
 
 * For user input errors, it will `abort` (`SystemExit`) with a description of what the user did wrong.
+  - "[ERROR] Option 'X' not found!"
+  - "[WARNING] Option 'X' not found!"
+  - "[ERROR] option 'X' matches multiple names: 'list of matchin names'!"
+  - "[ERROR] argument for option 'X' is not of type 'Integer'!"
+  - "[ERROR] argument for option 'X' is not of type 'Float'!"
+  - "[ERROR] missing argument for option 'X'!"
+  - "[ERROR] argument for option 'X' must be of type key=value!"
 
 == How to install it
 
@@ -325,15 +410,9 @@ Ruby 1.8.7+
 [[roadmap]]
 == Roadmap
 
-* Support bundling
-
-  -l -a -c  => -lac
-
-* Support passing values after the short option character
-
-  -i 24  => -i24
-
 * Make matching case insensitive.
+
+* Translations for user facing errors?
 
 * All other Perl's Getopt::Long goodies that seem reasonable to add!
 
