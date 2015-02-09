@@ -1,10 +1,11 @@
 #!/usr/bin/env ruby
 
-$LOAD_PATH << File.join(File.dirname(__FILE__), '../lib')
-
-require 'ruby-getoptions'
+require 'simplecov'
+SimpleCov.start
 require 'minitest'
 require 'minitest/autorun'
+$LOAD_PATH << File.join(File.dirname(__FILE__), '../lib')
+require 'ruby-getoptions'
 
 describe GetOptions do
 

@@ -7,7 +7,6 @@ David Gamba, https://github.com/DavidGamba
 Ruby option parser based on Perl's Getopt::Long.
 
 image:https://badge.fury.io/rb/ruby-getoptions.svg["Gem Version", link="http://badge.fury.io/rb/ruby-getoptions"]
-image:https://coveralls.io/repos/DavidGamba/ruby-getoptions/badge.svg["Coverage Status", link="https://coveralls.io/r/DavidGamba/ruby-getoptions"]
 image:https://codeclimate.com/github/DavidGamba/ruby-getoptions/badges/gpa.svg["Code Climate", link="https://codeclimate.com/github/DavidGamba/ruby-getoptions"]
 image:https://travis-ci.org/DavidGamba/ruby-getoptions.svg["Build Status", link="https://travis-ci.org/DavidGamba/ruby-getoptions"]
 
