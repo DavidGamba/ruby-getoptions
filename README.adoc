@@ -23,8 +23,8 @@ options, remaining = GetOptions.parse(ARGV, {
   "string=s"    => :string,
   "int=i"       => :int,
   "float=f"     => :float,
-  "procedure"   => lambda { puts 'Hello world! :-)' }
-  "help"        => lambda { print_synopsis() }
+  "procedure"   => lambda { puts 'Hello world! :-)' },
+  "help"        => lambda { print_synopsis() },
   "man"         => lambda { launch_manpage() },
   "version"     => lambda { puts 'Version is {version}' },
 })
