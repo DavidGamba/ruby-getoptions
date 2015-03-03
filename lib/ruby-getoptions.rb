@@ -96,7 +96,7 @@ private
         definitions = k.match(/^([^#{@valid_simbols}]+)[#{@valid_simbols}]?(.*?)$/)[1].split('|')
         unique_options.push(*definitions)
         arg_spec, *arg_opts = process_type(k.match(/^[^#{@valid_simbols}]+([#{@valid_simbols}]?(.*?))$/)[1])
-        opt_map[definitions] = { arg_spec: arg_spec, arg_opts: arg_opts, opt_dest: v }
+        opt_map[definitions] = { :arg_spec => arg_spec, :arg_opts => arg_opts, :opt_dest => v }
       end
       unless unique_options.uniq.length == unique_options.length
         duplicate_elements = unique_options.find { |e| unique_options.count(e) > 1 }
@@ -228,7 +228,7 @@ private
           return nil
         end
       elsif matches.size > 1
-        abort "[ERROR] option '#{opt}' matches multiple names '#{matches}'!"
+        abort "[ERROR] option '#{opt}' matches multiple names '#{matches.inspect}'!"
       end
       debug "matches: #{matches}"
       [matches[0], @option_map]
@@ -275,13 +275,13 @@ private
       when 'i'
         arg = 0 if optional && arg.nil?
         unless integer?(arg)
-          abort "[ERROR] argument for option '#{opt_match}' is not of type 'Integer'!"
+          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Integer'!"
         end
         arg = arg.to_i
       when 'f'
         arg = 0 if optional && arg.nil?
         unless numeric?(arg)
-          abort "[ERROR] argument for option '#{opt_match}' is not of type 'Float'!"
+          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Float'!"
         end
         arg = arg.to_f
       when 'o'
@@ -311,7 +311,7 @@ private
             debug "min: #{min}, max: #{max}"
             min -= 1
             max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match}'!" if args.size <= 0
+            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
             args, arg = process_desttype_arg(args, opt_match, optional)
             option_result[opt_def[:opt_dest]].push arg
           end
@@ -344,7 +344,7 @@ private
             debug "min: #{min}, max: #{max}"
             min -= 1
             max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match}'!" if args.size <= 0
+            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
             args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
             option_result[opt_def[:opt_dest]][key] = arg
           end
@@ -380,28 +380,28 @@ private
       debug "arg: '#{arg}'"
       if arg.nil?
         debug "arg is nil"
-        abort "[ERROR] missing argument for option '#{opt_match}'!"
+        abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       [args, arg]
     end
 
     def self.process_desttype_hash_arg(args, opt_match, optional)
       if args[0].nil? || (!args[0].nil? && option?(args[0]))
-        abort "[ERROR] missing argument for option '#{opt_match}'!"
+        abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       input = args.shift
       if (matches = input.match(/^([^=]+)=(.*)$/))
         key = matches[1]
         arg = matches[2]
       else
-        abort "[ERROR] argument for option '#{opt_match}' must be of type key=value!"
+        abort "[ERROR] argument for option '#{opt_match[0]}' must be of type key=value!"
       end
       debug "key: '#{key}', arg: '#{arg}'"
       arg = process_option_type(arg, opt_match, optional)
       debug "arg: '#{arg}'"
       if arg.nil?
         debug "arg is nil"
-        abort "[ERROR] missing argument for option '#{opt_match}'!"
+        abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       [args, arg, key]
     end
