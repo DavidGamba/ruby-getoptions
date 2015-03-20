@@ -225,7 +225,7 @@ private
         else
           debug "Option '#{opt}' not found!"
           $stderr.puts "[WARNING] Option '#{opt}' not found!" unless @options[:pass_through]
-          return nil
+          return [nil, @option_map]
         end
       elsif matches.size > 1
         abort "[ERROR] option '#{opt}' matches multiple names '#{matches.inspect}'!"

@@ -272,6 +272,21 @@ describe GetOptions do
     remaining.must_equal ['Hello', '-h', 'world!']
   end
 
+  it 'must allow several levels of pass_through' do
+    options, remaining = GetOptions.parse(
+        ['Hello', '-h', 'world!', '-t', 'test'],
+        {'t=s' => :t},
+        {:pass_through => true}
+    )
+    options[:t].must_equal 'test'
+    remaining.must_equal ['Hello', '-h', 'world!']
+    new_options, new_remaining = GetOptions.parse(remaining,
+        {'h=s' => :hello}
+    )
+    new_remaining.must_equal ['Hello']
+    new_options[:hello].must_equal 'world!'
+  end
+
   it 'should check the option_map for hash key uniqness / duplicates' do
     # Unfortunatelly Ruby allows to create a Hash with the same key on the same
     # line, there is no way to check for that that works consistently for me.
