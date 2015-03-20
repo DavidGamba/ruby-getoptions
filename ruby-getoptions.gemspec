@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'ruby-getoptions'
-  s.version     = '0.1.1'
+  s.version     = '0.1.2'
   s.date        = '2014-09-01'
   s.summary     = "Ruby option parser based on Perl’s Getopt::Long"
   s.description = "The best looking option parser out there"
