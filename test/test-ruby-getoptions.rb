@@ -326,7 +326,7 @@ describe GetOptions do
         )
       }.must_raise(SystemExit)
     }.must_output('',
-                  "[ERROR] option 't' matches multiple names '[[\"testing\"], [\"test\"]]'!\n")
+                  "[ERROR] option 't' matches multiple names '[[\"test\"], [\"testing\"]]'!\n")
   end
 
   it 'should allow @ definition' do

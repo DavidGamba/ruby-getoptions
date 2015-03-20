@@ -228,7 +228,7 @@ private
           return [nil, @option_map]
         end
       elsif matches.size > 1
-        abort "[ERROR] option '#{opt}' matches multiple names '#{matches.inspect}'!"
+        abort "[ERROR] option '#{opt}' matches multiple names '#{matches.sort.inspect}'!"
       end
       debug "matches: #{matches}"
       [matches[0], @option_map]
