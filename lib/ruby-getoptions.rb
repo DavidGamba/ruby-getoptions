@@ -419,4 +419,41 @@ private
       debug "Is option? '#{arg}' #{result}"
       result
     end
+
+    # Check if the given string is an option (begins with -).
+    # If the string is an option, it returns the options in that string as well
+    # as any arguments in it.
+    # @: s string, mode string
+    # return: options []string, argument string
+    def self.isOption?(s, mode)
+      isOptionRegex = /^(--?)([^=]+)(=?)(.*?)$/
+      # Handle special cases
+      if s == '--'
+        return ['--'], ''
+      elsif s == '-'
+        return ['-'], ''
+      end
+      options = Array.new
+      argument = String.new
+      matches = s.match(isOptionRegex)
+      if !matches.nil?
+        if matches[1] == '--'
+          options.push matches[2]
+          argument = matches[4]
+        else
+          case mode
+          when 'bundling'
+            options = matches[2].split('')
+            argument = matches[4]
+          when 'singleDash'
+            options.push matches[2][0]
+            argument = matches[2][1..-1] + matches[3] + matches[4]
+          else
+            options.push matches[2]
+            argument = matches[4]
+          end
+        end
+      end
+      return options, argument
+    end
 end

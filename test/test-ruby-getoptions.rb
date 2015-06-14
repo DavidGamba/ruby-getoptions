@@ -420,4 +420,39 @@ describe GetOptions do
     remaining.must_equal [":-)"]
   end
 
+  it 'should check if isOption?' do
+    # each test = [s, mode, options, argument]
+    t = []
+    # No opt
+    t.push ['opt=arg', 'normal', [], '']
+    t.push ['opt=arg', 'bundling', [], '']
+    t.push ['opt=arg', 'singleDash', [], '']
+    # Special cases
+    t.push ['-', 'normal', ['-'], '']
+    t.push ['-', 'bundling', ['-'], '']
+    t.push ['-', 'singleDash', ['-'], '']
+    t.push ['--', 'normal', ['--'], '']
+    t.push ['--', 'bundling', ['--'], '']
+    t.push ['--', 'singleDash', ['--'], '']
+    # double dash behaves the same in all modes
+    t.push ['--opt', 'normal', ['opt'], '']
+    t.push ['--opt', 'bundling', ['opt'], '']
+    t.push ['--opt', 'singleDash', ['opt'], '']
+    t.push ['--opt=arg', 'normal', ['opt'], 'arg']
+    t.push ['--opt=arg', 'bundling', ['opt'], 'arg']
+    t.push ['--opt=arg', 'singleDash', ['opt'], 'arg']
+    # single dash varies by mode
+    t.push ['-opt', 'normal', ['opt'], '']
+    t.push ['-opt', 'bundling', ['o', 'p', 't'], '']
+    t.push ['-opt', 'singleDash', ['o'], 'pt']
+    t.push ['-opt=arg', 'normal', ['opt'], 'arg']
+    t.push ['-opt=arg', 'bundling', ['o', 'p', 't'], 'arg']
+    t.push ['-opt=arg', 'singleDash', ['o'], 'pt=arg']
+    t.each do |test|
+      options, argument = GetOptions.isOption?(test[0], test[1])
+      options.must_equal test[2]
+      argument.must_equal test[3]
+    end
+  end
+
 end
