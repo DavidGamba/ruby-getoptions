@@ -95,7 +95,7 @@ private
         end
         definitions = k.match(/^([^#{@valid_simbols}]+)[#{@valid_simbols}]?(.*?)$/)[1].split('|')
         unique_options.push(*definitions)
-        arg_spec, *arg_opts = process_type(k.match(/^[^#{@valid_simbols}]+([#{@valid_simbols}]?(.*?))$/)[1])
+        arg_spec, *arg_opts = process_opt_spec(k.match(/^[^#{@valid_simbols}]+([#{@valid_simbols}]?(.*?))$/)[1])
         opt_map[definitions] = { :arg_spec => arg_spec, :arg_opts => arg_opts, :opt_dest => v }
       end
       unless unique_options.uniq.length == unique_options.length
@@ -107,7 +107,12 @@ private
       opt_map
     end
 
-    def self.process_type(type_str)
+
+    # Checks a option specification string and returns an array with
+    # argument_spec, type, destype and repeat.
+    # @: type definition
+    # return arg_spec, type, destype, repeat
+    def self.process_opt_spec(opt_spec)
       # argument_specification:
       # [ '',
       #   '!',
@@ -121,30 +126,40 @@ private
       # destype: ['@', '%']
       # repeat: { [ min ] [ , [ max ] ] }
 
-      # flag: ''
-      if type_str.match(/^$/)
-        ['flag']
-      # negatable flag: '!'
-      elsif type_str.match(/^!$/)
-        ['nflag']
-      # incremental int: '+'
-      elsif type_str.match(/^\+$/)
-        ['increment']
-      # required: '= type [destype] [repeat]'
-      elsif (matches = type_str.match(/^=(#{@type_regex})(#{@desttype_regex}?)(#{@repeat_regex}?)$/))
-        ['required', matches[1], matches[2], matches[3]]
-      # optional with default: ': number [destype]'
-      elsif (matches = type_str.match(/^:(\d+)(#{@desttype_regex}?)$/))
-        ['optional_with_default', matches[1], matches[2]]
-      # optional with increment: ': + [destype]'
-      elsif (matches = type_str.match(/^:(\+)(#{@desttype_regex}?)$/))
-        ['optional_with_increment', matches[1], matches[2]]
-      # optional: ': type [destype]'
-      elsif (matches = type_str.match(/^:(#{@type_regex})(#{@desttype_regex}?)$/))
-        ['optional', matches[1], matches[2]]
-      else
-        fail ArgumentError, "Unknown option type: '#{type_str}'!"
+      # Handle special cases
+      case opt_spec
+      when ''
+        return 'flag', 'b', nil, nil
+      when '!'
+        return 'nflag', 'b', nil, nil
+      when '+'
+        return 'increment', 'i', nil, nil
       end
+
+      opt_spec_regex = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)/
+      arg_spec = String.new
+      type     = nil
+      desttype = nil
+      repeat   = nil
+
+      matches = opt_spec.match(opt_spec_regex)
+      if matches.nil?
+        fail ArgumentError, "Wrong option specification: '#{opt_spec}'!"
+      end
+      case matches[1]
+      when '='
+        arg_spec = 'required'
+      when ':'
+        arg_spec = 'optional'
+      end
+      type = matches[2]
+      if matches[3] != ''
+        desttype = matches[3]
+      end
+      if matches[4] != ''
+        repeat = matches[4]
+      end
+      return arg_spec, type, desttype, repeat
     end
 
     def self.process_arguments(args, option_result, remaining_args)
@@ -299,7 +314,8 @@ private
           option_result[opt_def[:opt_dest]] = []
         end
         # check for repeat specifier {min, max}
-        if (matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/))
+        if !opt_def[:arg_opts][2].nil?
+          matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/)
           min = matches[1].to_i
           max = matches[2]
           max = min if max.nil?
@@ -332,7 +348,8 @@ private
           option_result[opt_def[:opt_dest]] = {}
         end
         # check for repeat specifier {min, max}
-        if (matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/))
+        if !opt_def[:arg_opts][2].nil?
+          matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/)
           min = matches[1].to_i
           max = matches[2]
           max = min if max.nil?

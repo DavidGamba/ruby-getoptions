@@ -374,7 +374,7 @@ describe GetOptions do
   it 'should abort if repeat cannot be met' do
     lambda {
       lambda {
-        options, remaining = GetOptions.parse(
+        _options, _remaining = GetOptions.parse(
           ['-t', 'hello', 'happy', 'world!', ':-)'],
           { 't=s@{5}' => :string }
         )
@@ -452,6 +452,37 @@ describe GetOptions do
       options, argument = GetOptions.isOption?(test[0], test[1])
       options.must_equal test[2]
       argument.must_equal test[3]
+    end
+  end
+
+  it 'should expand option specification' do
+    # each test = [opt_spec, [arg_spec, type, destype, repeat]]
+    t = []
+    t.push ["" , ["flag", 'b', nil, nil ]]
+    t.push ["!" , ["nflag", 'b', nil, nil ]]
+    t.push ["+" , ["increment", 'i', nil, nil ]]
+    t.push ["=i" , ["required", 'i', nil, nil ]]
+    t.push ["=s" , ["required", 's', nil, nil ]]
+    t.push ["=f" , ["required", 'f', nil, nil ]]
+    t.push ["=o" , ["required", 'o', nil, nil ]]
+    t.push ["=i@" , ["required", 'i', '@', nil ]]
+    t.push ["=s@" , ["required", 's', '@', nil ]]
+    t.push ["=f@" , ["required", 'f', '@', nil ]]
+    t.push ["=o@" , ["required", 'o', '@', nil ]]
+    t.push ["=i%" , ["required", 'i', '%', nil ]]
+    t.push ["=s%" , ["required", 's', '%', nil ]]
+    t.push ["=f%" , ["required", 'f', '%', nil ]]
+    t.push ["=o%" , ["required", 'o', '%', nil ]]
+    t.push ["=i@{2}" , ["required", 'i', '@', "{2}" ]]
+    t.push ["=i@{2,}" , ["required", 'i', '@', "{2,}" ]]
+    t.push ["=i@{,3}" , ["required", 'i', '@', "{,3}" ]]
+    t.push ["=i@{2,3}" , ["required", 'i', '@', "{2,3}" ]]
+    t.push ["=s@{2,3}" , ["required", 's', '@', "{2,3}" ]]
+    t.push ["=f@{2,3}" , ["required", 'f', '@', "{2,3}" ]]
+    t.push ["=o@{2,3}" , ["required", 'o', '@', "{2,3}" ]]
+    t.each do |test|
+      *arg_opts = GetOptions.process_opt_spec(test[0])
+      arg_opts.must_equal test[1]
     end
   end
 
