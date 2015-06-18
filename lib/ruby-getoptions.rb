@@ -85,6 +85,15 @@ private
       end
     end
 
+    # Given an option definition, it extracts the aliases and puts them into an array.
+    #
+    # @: definition
+    # return: [aliases, ...]
+    def self.extract_spec_and_aliases(definition)
+      m = definition.match(/^([^#{@valid_simbols}]+)([#{@valid_simbols}]?.*?)$/)
+      return m[2], m[1].split('|')
+    end
+
     def self.generate_extended_option_map(option_map)
       opt_map = {}
       unique_options = []
@@ -93,10 +102,12 @@ private
           fail ArgumentError,
               "GetOptions option_map missing name in definition: '#{k}'"
         end
-        definitions = k.match(/^([^#{@valid_simbols}]+)[#{@valid_simbols}]?(.*?)$/)[1].split('|')
-        unique_options.push(*definitions)
-        arg_spec, *arg_opts = process_opt_spec(k.match(/^[^#{@valid_simbols}]+([#{@valid_simbols}]?(.*?))$/)[1])
+        opt_spec, definitions = extract_spec_and_aliases(k)
+        arg_spec, *arg_opts = process_opt_spec(opt_spec)
         opt_map[definitions] = { :arg_spec => arg_spec, :arg_opts => arg_opts, :opt_dest => v }
+
+        # Push all definitions
+        unique_options.push(*definitions)
       end
       unless unique_options.uniq.length == unique_options.length
         duplicate_elements = unique_options.find { |e| unique_options.count(e) > 1 }
@@ -110,6 +121,10 @@ private
 
     # Checks a option specification string and returns an array with
     # argument_spec, type, destype and repeat.
+    #
+    # The Option Specification provides a nice, compact interface. This method
+    # extracts the different parts from that.
+    #
     # @: type definition
     # return arg_spec, type, destype, repeat
     def self.process_opt_spec(opt_spec)

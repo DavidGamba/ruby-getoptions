@@ -486,4 +486,26 @@ describe GetOptions do
     end
   end
 
+  it 'should extract aliases from definition' do
+    # each test = [opt_spec, [arg_spec, type, destype, repeat]]
+    t = []
+    t.push ["flag" , ["", ["flag"]]]
+    t.push ["flag|f" , ["", ["flag", "f"]]]
+    t.push ["flag|f|f" , ["", ["flag", "f", "f"]]]
+    t.push ["f|flag|f|f" , ["", ["f", "flag", "f", "f"]]]
+    t.push ["nf|nflag!" , ["!", ["nf", "nflag"]]]
+    t.push ["if|iflag+" , ["+", ["if", "iflag"]]]
+    t.push ["i|int=i" , ["=i", ["i", 'int']]]
+    t.push ["s|string=s" , ["=s", ["s", 'string']]]
+    t.push ["float|f=f" , ["=f", ["float", 'f']]]
+    t.push ["other|o=o" , ["=o", ["other", 'o']]]
+    t.push ["array|a=i@" , ["=i@", ["array", 'a']]]
+    t.push ["hash|h=i%" , ["=i%", ["hash", 'h']]]
+    t.push ["repeat|r=i@{2,3}" , ["=i@{2,3}", ["repeat", 'r']]]
+    t.each do |test|
+      *arg_opts = GetOptions.extract_spec_and_aliases(test[0])
+      arg_opts.must_equal test[1]
+    end
+  end
+
 end
