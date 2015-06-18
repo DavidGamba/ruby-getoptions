@@ -96,7 +96,7 @@ private
 
     def self.generate_extended_option_map(option_map)
       opt_map = {}
-      unique_options = []
+      definition_list = []
       option_map.each_pair do |k, v|
         if k.match(/^[=:+!]/)
           fail ArgumentError,
@@ -106,16 +106,19 @@ private
         arg_spec, *arg_opts = process_opt_spec(opt_spec)
         opt_map[definitions] = { :arg_spec => arg_spec, :arg_opts => arg_opts, :opt_dest => v }
 
-        # Push all definitions
-        unique_options.push(*definitions)
+        definition_list.push(*definitions)
       end
-      unless unique_options.uniq.length == unique_options.length
-        duplicate_elements = unique_options.find { |e| unique_options.count(e) > 1 }
+      fail_on_duplicate_definitions(definition_list)
+      debug "opt_map: #{opt_map}"
+      opt_map
+    end
+
+    def self.fail_on_duplicate_definitions(definition_list)
+      unless definition_list.uniq.length == definition_list.length
+        duplicate_elements = definition_list.find { |e| definition_list.count(e) > 1 }
         fail ArgumentError,
             "GetOptions option_map needs to have unique options: '#{duplicate_elements}'"
       end
-      debug "opt_map: #{opt_map}"
-      opt_map
     end
 
 
