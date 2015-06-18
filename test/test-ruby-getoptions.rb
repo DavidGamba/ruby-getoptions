@@ -508,4 +508,15 @@ describe GetOptions do
     end
   end
 
+  it 'should fail on duplicate definitions' do
+    GetOptions.fail_on_duplicate_definitions(
+      ['Hello', 'world!'],
+    ).must_equal true
+    lambda {
+      GetOptions.fail_on_duplicate_definitions(
+        ['Hello', 'world!', 'hello'],
+      )
+    }.must_raise(ArgumentError)
+  end
+
 end
