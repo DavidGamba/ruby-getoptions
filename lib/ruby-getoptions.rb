@@ -43,7 +43,7 @@ class GetOptions
     info "input option_map: '#{option_map}'"
     info "input options: '#{options}'"
     @option_map = generate_extended_option_map(option_map)
-    option_result, remaining_args = process_arguments(args, {}, [])
+    option_result, remaining_args = iterate_over_arguments(args)
     debug "option_result: '#{option_result}', remaining_args: '#{remaining_args}'"
     @log = nil
     [option_result, remaining_args]
@@ -182,18 +182,20 @@ private
       return arg_spec, type, desttype, repeat
     end
 
-    def self.process_arguments(args, option_result, remaining_args)
-      if args.size > 0
+
+    def self.iterate_over_arguments(args)
+      option_result = {}
+      remaining_args = []
+      while args.size > 0
         arg = args.shift
-        if arg.match(@end_processing_regex)
+        options, _argument = isOption?(arg, 'normal')
+        if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
-        elsif option? arg
+        elsif options.size >= 1
           option_result, args, remaining_args = process_option(arg, option_result, args, remaining_args)
-          option_result, remaining_args = process_arguments(args, option_result, remaining_args)
         else
           remaining_args.push arg
-          option_result, remaining_args = process_arguments(args, option_result, remaining_args)
         end
       end
       return option_result, remaining_args
