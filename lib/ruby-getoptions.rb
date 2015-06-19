@@ -188,12 +188,12 @@ private
       remaining_args = []
       while args.size > 0
         arg = args.shift
-        options, _argument = isOption?(arg, 'normal')
+        options, argument = isOption?(arg, 'normal')
         if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
         elsif options.size >= 1
-          option_result, args, remaining_args = process_option(arg, option_result, args, remaining_args)
+          option_result, remaining_args, args = process_option(arg, option_result, args, remaining_args, options, argument)
         else
           remaining_args.push arg
         end
@@ -201,24 +201,18 @@ private
       return option_result, remaining_args
     end
 
-    def self.process_option(orig_opt, option_result, args, remaining_args)
-      opt = orig_opt.gsub(/^-+/, '')
-      # Check if option has a value defined with an equal sign
-      if (matches = opt.match(/^([^=]+)=(.*)$/))
-        opt = matches[1]
-        arg = matches[2]
-      end
+    def self.process_option(orig_opt, option_result, args, remaining_args, options, argument)
       # Make it obvious that find_option_matches is updating the instance variable
-      opt_match, @option_map = find_option_matches(opt)
+      opt_match, @option_map = find_option_matches(options[0])
       if opt_match.nil?
         remaining_args.push orig_opt
-        return option_result, args, remaining_args
+        return option_result, remaining_args, args
       end
-      args.unshift arg unless arg.nil?
+      args.unshift argument unless argument.nil? || argument == ""
       debug "new args: #{args}"
       option_result, args = execute_option(opt_match, option_result, args)
       debug "option_result: #{option_result}"
-      return option_result, args, remaining_args
+      return option_result, remaining_args, args
     end
 
     def self.find_option_matches(opt)
