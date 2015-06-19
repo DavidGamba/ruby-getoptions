@@ -43,7 +43,7 @@ class GetOptions
     info "input option_map: '#{option_map}'"
     info "input options: '#{options}'"
     @option_map = generate_extended_option_map(option_map)
-    option_result, remaining_args = iterate_over_arguments(args)
+    option_result, remaining_args = iterate_over_arguments(args, options[:mode])
     debug "option_result: '#{option_result}', remaining_args: '#{remaining_args}'"
     @log = nil
     [option_result, remaining_args]
@@ -195,12 +195,12 @@ private
     end
 
 
-    def self.iterate_over_arguments(args)
+    def self.iterate_over_arguments(args, mode)
       option_result = {}
       remaining_args = []
       while args.size > 0
         arg = args.shift
-        options, argument = isOption?(arg, 'normal')
+        options, argument = isOption?(arg, mode)
         if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
@@ -214,16 +214,18 @@ private
     end
 
     def self.process_option(orig_opt, option_result, args, remaining_args, options, argument)
-      # Make it obvious that find_option_matches is updating the instance variable
-      opt_match, @option_map = find_option_matches(options[0])
-      if opt_match.nil?
-        remaining_args.push orig_opt
-        return option_result, remaining_args, args
+      options.each_with_index do |opt, i|
+        # Make it obvious that find_option_matches is updating the instance variable
+        opt_match, @option_map = find_option_matches(options[i])
+        if opt_match.nil?
+          remaining_args.push orig_opt
+          return option_result, remaining_args, args
+        end
+        args.unshift argument unless argument.nil? || argument == "" || i < (options.size - 1)
+        debug "new args: #{args}"
+        option_result, args = execute_option(opt_match, option_result, args)
+        debug "option_result: #{option_result}"
       end
-      args.unshift argument unless argument.nil? || argument == ""
-      debug "new args: #{args}"
-      option_result, args = execute_option(opt_match, option_result, args)
-      debug "option_result: #{option_result}"
       return option_result, remaining_args, args
     end
 

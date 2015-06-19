@@ -420,6 +420,21 @@ describe GetOptions do
     remaining.must_equal [":-)"]
   end
 
+  # Bundling
+
+  it 'should support bundling' do
+    options, remaining = GetOptions.parse(
+      ['-st', 'test'],
+      {'s' => :s, 't=s' => :t},
+      {:mode => 'bundling'}
+    )
+    options[:s].must_equal true
+    options[:t].must_equal 'test'
+    remaining.must_be_empty
+  end
+
+  # Internal methods
+
   it 'should check if isOption?' do
     # each test = [s, mode, options, argument]
     t = []
