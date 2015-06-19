@@ -382,6 +382,27 @@ describe GetOptions do
     }.must_output("", "[ERROR] missing argument for option 't'!\n")
   end
 
+  it 'should fail if repeat definition is wrong' do
+    lambda {
+      _options, _remaining = GetOptions.parse(
+        [],
+        { 't=s@{5,3}' => :string }
+      )
+    }.must_raise(ArgumentError)
+    lambda {
+      _options, _remaining = GetOptions.parse(
+        [],
+        { 't=s@{}' => :string }
+      )
+    }.must_raise(ArgumentError)
+    lambda {
+      _options, _remaining = GetOptions.parse(
+        [],
+        { 't=s@{2' => :string }
+      )
+    }.must_raise(ArgumentError)
+  end
+
   it 'should allow hash options' do
     options, remaining = GetOptions.parse(
       ['-t', 'os=linux', '-t', 'editor=vim', ':-)'],
@@ -471,7 +492,7 @@ describe GetOptions do
   end
 
   it 'should expand option specification' do
-    # each test = [opt_spec, [arg_spec, type, destype, repeat]]
+    # each test = [opt_spec, [arg_spec, type, destype, [repeat min, max]]]
     t = []
     t.push ["" , ["flag", 'b', nil, nil ]]
     t.push ["!" , ["nflag", 'b', nil, nil ]]
@@ -488,13 +509,13 @@ describe GetOptions do
     t.push ["=s%" , ["required", 's', '%', nil ]]
     t.push ["=f%" , ["required", 'f', '%', nil ]]
     t.push ["=o%" , ["required", 'o', '%', nil ]]
-    t.push ["=i@{2}" , ["required", 'i', '@', "{2}" ]]
-    t.push ["=i@{2,}" , ["required", 'i', '@', "{2,}" ]]
-    t.push ["=i@{,3}" , ["required", 'i', '@', "{,3}" ]]
-    t.push ["=i@{2,3}" , ["required", 'i', '@', "{2,3}" ]]
-    t.push ["=s@{2,3}" , ["required", 's', '@', "{2,3}" ]]
-    t.push ["=f@{2,3}" , ["required", 'f', '@', "{2,3}" ]]
-    t.push ["=o@{2,3}" , ["required", 'o', '@', "{2,3}" ]]
+    t.push ["=i@{2}" , ["required", 'i', '@', [2, 2] ]]
+    t.push ["=i@{2,}" , ["required", 'i', '@', [2, 2] ]]
+    t.push ["=i@{,3}" , ["required", 'i', '@', [1, 3] ]]
+    t.push ["=i@{2,3}" , ["required", 'i', '@', [2, 3] ]]
+    t.push ["=s@{2,3}" , ["required", 's', '@', [2, 3] ]]
+    t.push ["=f@{2,3}" , ["required", 'f', '@', [2, 3] ]]
+    t.push ["=o@{2,3}" , ["required", 'o', '@', [2, 3] ]]
     t.each do |test|
       *arg_opts = GetOptions.process_opt_spec(test[0])
       arg_opts.must_equal test[1]
@@ -502,7 +523,7 @@ describe GetOptions do
   end
 
   it 'should extract aliases from definition' do
-    # each test = [opt_spec, [arg_spec, type, destype, repeat]]
+    # each test = [opt_spec, [arg_spec, [aliases, ...]]
     t = []
     t.push ["flag" , ["", ["flag"]]]
     t.push ["flag|f" , ["", ["flag", "f"]]]

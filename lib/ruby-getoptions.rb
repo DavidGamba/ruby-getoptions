@@ -136,7 +136,7 @@ private
     end
 
 
-    # Checks a option specification string and returns an array with
+    # Checks an option specification string and returns an array with
     # argument_spec, type, destype and repeat.
     #
     # The Option Specification provides a nice, compact interface. This method
@@ -168,7 +168,7 @@ private
         return 'increment', 'i', nil, nil
       end
 
-      opt_spec_regex = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)/
+      opt_spec_regex = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)$/
       arg_spec = String.new
       type     = nil
       desttype = nil
@@ -189,11 +189,20 @@ private
         desttype = matches[3]
       end
       if matches[4] != ''
-        repeat = matches[4]
+        r_matches = matches[4].match(/\{(\d+)?(?:,\s?(\d+)?)?\}/)
+        min = r_matches[1]
+        min ||= 1
+        min = min.to_i
+        max = r_matches[2]
+        max = min if max.nil?
+        max = max.to_i
+        if min > max
+          fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
+        end
+        repeat = [min, max]
       end
       return arg_spec, type, desttype, repeat
     end
-
 
     def self.iterate_over_arguments(args, mode)
       option_result = {}
@@ -221,6 +230,7 @@ private
           remaining_args.push orig_opt
           return option_result, remaining_args, args
         end
+        # Only pass argument to the last option in the options array
         args.unshift argument unless argument.nil? || argument == "" || i < (options.size - 1)
         debug "new args: #{args}"
         option_result, args = execute_option(opt_match, option_result, args)
@@ -333,7 +343,7 @@ private
         end
         arg = arg.to_f
       when 'o'
-        # FIXME
+        # TODO
         abort "[ERROR] Unimplemented type 'o'!"
       end
       return arg
@@ -346,16 +356,10 @@ private
         unless option_result[opt_def[:opt_dest]].kind_of? Array
           option_result[opt_def[:opt_dest]] = []
         end
-        # check for repeat specifier {min, max}
+        # check for repeat
         if !opt_def[:arg_opts][2].nil?
-          matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/)
-          min = matches[1].to_i
-          max = matches[2]
-          max = min if max.nil?
-          max = max.to_i
-          if min > max
-            fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
-          end
+          min = opt_def[:arg_opts][2][0]
+          max = opt_def[:arg_opts][2][1]
           while min > 0
             debug "min: #{min}, max: #{max}"
             min -= 1
@@ -380,16 +384,10 @@ private
         unless option_result[opt_def[:opt_dest]].kind_of? Hash
           option_result[opt_def[:opt_dest]] = {}
         end
-        # check for repeat specifier {min, max}
+        # check for repeat
         if !opt_def[:arg_opts][2].nil?
-          matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/)
-          min = matches[1].to_i
-          max = matches[2]
-          max = min if max.nil?
-          max = max.to_i
-          if min > max
-            fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
-          end
+          min = opt_def[:arg_opts][2][0]
+          max = opt_def[:arg_opts][2][1]
           while min > 0
             debug "min: #{min}, max: #{max}"
             min -= 1
