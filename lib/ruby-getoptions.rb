@@ -50,6 +50,18 @@ class GetOptions
   end
 
 private
+
+# This is how the instance variable @option_map looks like:
+# @option_map:
+# {
+#   ["opt", "alias"] => {
+#     :arg_spec=>"nflag",
+#     :arg_opts=>["b", nil, nil],
+#     :opt_dest=>:flag3,
+#     :negated=> true
+#   }
+# }
+
     def self.set_initial_values()
       # Regex definitions
       @end_processing_regex = /^--$/
@@ -215,39 +227,42 @@ private
       return option_result, remaining_args, args
     end
 
-    def self.find_option_matches(opt)
+    # find_option_matches_in_hash iterates over the option_map hash and returns
+    # a list of entries that match the given option.
+    #
+    # NOTE: This method updates the given hash.
+    #
+    # @: option, hash, regex
+    # return: matches, hash
+    def self.find_option_matches_in_hash(opt, hash, regex)
       matches = []
-      @option_map.each_pair do |k, v|
+      hash.each_pair do |k, v|
         local_matches = []
-        k.map { |name| local_matches.push name if name.match(/^#{opt}$/) }
+        k.map { |name| local_matches.push name if name.match(regex) }
         if v[:arg_spec] == 'nflag'
           k.map do |name|
             if opt.match(/^no-?/) && name.match(/^#{opt.gsub(/no-?/, '')}$/)
-              # Update the instance variable
-              @option_map[k][:negated] = true
+              # Update the given hash
+              hash[k][:negated] = true
               local_matches.push name
+              debug "hash: #{hash}"
             end
           end
         end
         matches.push(k) if local_matches.size > 0
       end
-      # FIXME: Too much repetition.
+      return matches, hash
+    end
+
+    def self.find_option_matches(opt)
+      matches = []
+      m, @option_map = find_option_matches_in_hash(opt, @option_map, /^#{opt}$/)
+      matches.push(*m)
+
       # If the strict match returns no results, lets be more permisive.
       if matches.size == 0
-        @option_map.each_pair do |k, v|
-          local_matches = []
-          k.map { |name| local_matches.push name if name.match(/^#{opt}/) }
-          if v[:arg_spec] == 'nflag'
-            k.map do |name|
-              if opt.match(/^no-?/) && name.match(/^#{opt.gsub(/^no-?/, '')}/)
-                # Update the instance variable
-                @option_map[k][:negated] = true
-                local_matches.push name
-              end
-            end
-          end
-          matches.push(k) if local_matches.size > 0
-        end
+        m, @option_map = find_option_matches_in_hash(opt, @option_map, /^#{opt}/)
+        matches.push(*m)
       end
 
       if matches.size == 0
