@@ -517,7 +517,7 @@ describe GetOptions do
     t.push ["=f@{2,3}" , ["required", 'f', '@', [2, 3] ]]
     t.push ["=o@{2,3}" , ["required", 'o', '@', [2, 3] ]]
     t.each do |test|
-      *arg_opts = GetOptions.process_opt_spec(test[0])
+      arg_opts = GetOptions.process_opt_spec(test[0])
       arg_opts.must_equal test[1]
     end
   end
@@ -539,18 +539,18 @@ describe GetOptions do
     t.push ["hash|h=i%" , ["=i%", ["hash", 'h']]]
     t.push ["repeat|r=i@{2,3}" , ["=i@{2,3}", ["repeat", 'r']]]
     t.each do |test|
-      *arg_opts = GetOptions.extract_spec_and_aliases(test[0])
+      arg_opts = GetOptions.extract_spec_and_aliases(test[0])
       arg_opts.must_equal test[1]
     end
   end
 
   it 'should fail on duplicate definitions' do
     GetOptions.fail_on_duplicate_definitions(
-      ['Hello', 'world!'],
+      ['Hello', 'world!']
     ).must_equal true
     lambda {
       GetOptions.fail_on_duplicate_definitions(
-        ['Hello', 'world!', 'hello'],
+        ['Hello', 'world!', 'hello']
       )
     }.must_raise(ArgumentError)
   end

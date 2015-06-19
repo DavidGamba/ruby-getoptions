@@ -494,7 +494,7 @@ private
             options = matches[2].split('')
             argument = matches[4]
           when 'singleDash'
-            options.push matches[2][0]
+            options.push matches[2][0].chr
             argument = matches[2][1..-1] + matches[3] + matches[4]
           else
             options.push matches[2]
