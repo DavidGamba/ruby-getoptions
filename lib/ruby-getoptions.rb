@@ -292,6 +292,8 @@ private
       [matches[0], @option_map]
     end
 
+    # TODO: Some specs allow for Symbols and procedures, others only Symbols.
+    #       Fail during init and not during run time.
     def self.execute_option(opt_match, option_result, args)
       opt_def = @option_map[opt_match]
       debug "#{opt_def[:arg_spec]}"
@@ -326,27 +328,30 @@ private
       [option_result, args]
     end
 
+    # process_option_type Given an arg, it checks what type is the option expecting and based on that saves
     def self.process_option_type(arg, opt_match, optional = false)
       case @option_map[opt_match][:arg_opts][0]
       when 's'
         arg = '' if optional && arg.nil?
       when 'i'
         arg = 0 if optional && arg.nil?
-        unless integer?(arg)
-          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Integer'!"
-        end
+        type_error(arg, opt_match[0], 'Integer', lambda { |x| integer?(x) })
         arg = arg.to_i
       when 'f'
         arg = 0 if optional && arg.nil?
-        unless numeric?(arg)
-          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Float'!"
-        end
+        type_error(arg, opt_match[0], 'Float', lambda { |x| numeric?(x) })
         arg = arg.to_f
       when 'o'
         # TODO
         abort "[ERROR] Unimplemented type 'o'!"
       end
       return arg
+    end
+
+    def self.type_error(arg, opt, type, func)
+      unless func.call(arg)
+        abort "[ERROR] argument for option '#{opt}' is not of type '#{type}'!"
+      end
     end
 
     def self.process_desttype(option_result, args, opt_match, optional = false)
