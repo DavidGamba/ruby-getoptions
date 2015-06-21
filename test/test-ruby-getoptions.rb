@@ -390,6 +390,15 @@ describe GetOptions do
         )
       }.must_raise(SystemExit)
     }.must_output("", "[ERROR] missing argument for option 't'!\n")
+
+    lambda {
+      lambda {
+        _options, _remaining = GetOptions.parse(
+          ['-t', 'hello=world', 'happy=life', 'world=tour', 'smile=:-)'],
+          { 't=s%{5}' => :string }
+        )
+      }.must_raise(SystemExit)
+    }.must_output("", "[ERROR] missing argument for option 't'!\n")
   end
 
   it 'should fail if repeat definition is wrong' do
@@ -446,6 +455,13 @@ describe GetOptions do
     options, remaining = GetOptions.parse(
       ['-t', 'os=linux', 'editor=vim', ':-)'],
       { 't=s%{2}' => :hash }
+    )
+    options[:hash].must_equal({"os"=>"linux", "editor"=>"vim"})
+    remaining.must_equal [":-)"]
+
+    options, remaining = GetOptions.parse(
+      ['-t', 'os=linux', 'editor=vim', ':-)'],
+      { 't=s%{1, 2}' => :hash }
     )
     options[:hash].must_equal({"os"=>"linux", "editor"=>"vim"})
     remaining.must_equal [":-)"]
