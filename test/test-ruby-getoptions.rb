@@ -32,6 +32,16 @@ describe GetOptions do
     remaining.must_equal ['Hello', 'world!']
   end
 
+  it 'should stop parsing stuff when -- is given' do
+    options, remaining = GetOptions.parse(
+      ['hello', '--world', 'test', '--', '--string', 'test'],
+      {'world=s' => :world,
+       'string=s' => :string}
+    )
+    options[:world].must_equal 'test'
+    remaining.must_equal ['hello', '--string', 'test']
+  end
+
   # Strings
 
   it 'should parse strings' do
@@ -299,7 +309,7 @@ describe GetOptions do
     }.must_raise(ArgumentError)
   end
 
-  it 'should allow multiple definitions for a single entry' do
+  it 'should allow multiple definitions, aliases, for a single entry' do
     options, remaining = GetOptions.parse(
       ['Hello', '--test', 'world!'],
       { 'flag' => :flag, 'hello|test!' => :test, }
