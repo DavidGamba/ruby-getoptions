@@ -358,66 +358,60 @@ private
       opt_def = @option_map[opt_match]
       case opt_def[:arg_opts][1]
       when '@'
-        unless option_result[opt_def[:opt_dest]].kind_of? Array
-          option_result[opt_def[:opt_dest]] = []
-        end
-        # check for repeat
-        if !opt_def[:arg_opts][2].nil?
-          min = opt_def[:arg_opts][2][0]
-          max = opt_def[:arg_opts][2][1]
-          while min > 0
-            debug "min: #{min}, max: #{max}"
-            min -= 1
-            max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
-            args, arg = process_desttype_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]].push arg
-          end
-          while max > 0
-            debug "min: #{min}, max: #{max}"
-            max -= 1
-            break if args.size <= 0
-            args, arg = process_desttype_arg(args, opt_match, optional, true)
-            break if arg.nil?
-            option_result[opt_def[:opt_dest]].push arg
-          end
-        else
-          args, arg = process_desttype_arg(args, opt_match, optional)
-          option_result[opt_def[:opt_dest]].push arg
-        end
+        check_for_repeat(Array, option_result, args, opt_match, optional, opt_def)
       when '%'
-        unless option_result[opt_def[:opt_dest]].kind_of? Hash
-          option_result[opt_def[:opt_dest]] = {}
-        end
-        # check for repeat
-        if !opt_def[:arg_opts][2].nil?
-          min = opt_def[:arg_opts][2][0]
-          max = opt_def[:arg_opts][2][1]
-          while min > 0
-            debug "min: #{min}, max: #{max}"
-            min -= 1
-            max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
-            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]][key] = arg
-          end
-          while max > 0
-            debug "min: #{min}, max: #{max}"
-            max -= 1
-            break if args.size <= 0
-            break if option?(args[0])
-            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]][key] = arg
-          end
-        else
-          args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-          option_result[opt_def[:opt_dest]][key] = arg
-        end
+        check_for_repeat(Hash, option_result, args, opt_match, optional, opt_def)
       else
         args, arg = process_desttype_arg(args, opt_match, optional)
         option_result[opt_def[:opt_dest]] = arg
       end
       [option_result, args]
+    end
+
+    def self.check_for_repeat(type, option_result, args, opt_match, optional, opt_def)
+      unless option_result[opt_def[:opt_dest]].kind_of? type
+        option_result[opt_def[:opt_dest]] = type.new
+      end
+      # check for repeat
+      if !opt_def[:arg_opts][2].nil?
+        min = opt_def[:arg_opts][2][0]
+        max = opt_def[:arg_opts][2][1]
+        while min > 0
+          debug "min: #{min}, max: #{max}"
+          min -= 1
+          max -= 1
+          abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
+          if type == Array
+            args, arg = process_desttype_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]].push arg
+          elsif type == Hash
+            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]][key] = arg
+          end
+        end
+        while max > 0
+          debug "min: #{min}, max: #{max}"
+          max -= 1
+          break if args.size <= 0
+          if type == Array
+            args, arg = process_desttype_arg(args, opt_match, optional, true)
+            break if arg.nil?
+            option_result[opt_def[:opt_dest]].push arg
+          elsif type == Hash
+            break if option?(args[0])
+            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]][key] = arg
+          end
+        end
+      else
+        if type == Array
+          args, arg = process_desttype_arg(args, opt_match, optional)
+          option_result[opt_def[:opt_dest]].push arg
+        elsif type == Hash
+          args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+          option_result[opt_def[:opt_dest]][key] = arg
+        end
+      end
     end
 
     def self.process_desttype_arg(args, opt_match, optional, required = false)
