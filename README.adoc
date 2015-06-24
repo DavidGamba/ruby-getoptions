@@ -140,56 +140,12 @@ option flags that call a method internally:: If all the flag is doing is call a 
 Notice how so far only long options (options starting with double dash `--`) have been mentioned.
 There are 3 main ways to handle short options (options starting with only one dash `-`), see the <<operation_modes>> section for details.
 
-== Quick overview
-
-1. Define your command line specification:
-+
-[source,ruby,subs=attributes]
-----
-require 'ruby-getoptions'
-
-options, remaining = GetOptions.parse(ARGV, {
-  "f|flag"      => :flag,
-  "string=s"    => :string,
-  "int=i"       => :int,
-  "float=f"     => :float,
-  "procedure"   => lambda { puts 'Hello world! :-)' },
-  "help"        => lambda { print_synopsis() },
-  "man"         => lambda { launch_manpage() },
-  "version"     => lambda { puts 'Version is {version}' },
-})
-----
-
-2. Pass cmdline arguments:
-+
-----
-$ ./myscript non-option -f --string=mystring -i 7 --float 3.14 --p --version non-option2 -- --nothing
-----
-
-3. It will run the higher order functions that were called on the cmdline:
-+
-[subs=attributes]
-----
-Hello world!
-Version is {version}
-----
-
-4. Internally it will return an array with the arguments that are not options and anything after the `--` identifier, and a Hash with the values of the options that were passed:
-+
-----
-remaining = ['non-option', 'non-option2', '--nothing']
-
-options   = {:flag   => true,       # Boolean
-             :string => 'mystring', # String
-             :int    => 7,          # Integer
-             :float  => 3.14}       # Float
-----
-
 [[operation_modes]]
 == Operation Modes
 
-{name} can receive arguments to an option after the space, `--option argument_to_option`, or without the space (depending on the _operation mode_), `--option=argument`. See below for details on how to pass arguments without the space:
-
+The behaviour for long options (options starting with double dash `--`) is consistent across operation modes.
+The behaviour for short options (options starting with only one dash `-`) depends on the _operation mode_.
+The sections below show the different operation modes.
 
 === Normal Mode (default)
 
@@ -257,6 +213,50 @@ a|option: `"o"`, argument: `"pt=arg"` footnote:[Argument gets type casted depend
 
 |===
 
+== Quick overview
+
+1. Define your command line specification:
++
+[source,ruby,subs=attributes]
+----
+require 'ruby-getoptions'
+
+options, remaining = GetOptions.parse(ARGV, {
+  "f|flag"      => :flag,
+  "string=s"    => :string,
+  "int=i"       => :int,
+  "float=f"     => :float,
+  "procedure"   => lambda { puts 'Hello world! :-)' },
+  "help"        => lambda { print_synopsis() },
+  "man"         => lambda { launch_manpage() },
+  "version"     => lambda { puts 'Version is {version}' },
+})
+----
+
+2. Pass cmdline arguments:
++
+----
+$ ./myscript non-option -f --string=mystring -i 7 --float 3.14 --p --version non-option2 -- --nothing
+----
+
+3. It will run the higher order functions that were called on the cmdline:
++
+[subs=attributes]
+----
+Hello world!
+Version is {version}
+----
+
+4. Internally it will return an array with the arguments that are not options and anything after the `--` identifier, and a Hash with the values of the options that were passed:
++
+----
+remaining = ['non-option', 'non-option2', '--nothing']
+
+options   = {:flag   => true,       # Boolean
+             :string => 'mystring', # String
+             :int    => 7,          # Integer
+             :float  => 3.14}       # Float
+----
 
 == Synopsis
 
