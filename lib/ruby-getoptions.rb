@@ -458,7 +458,7 @@ private
     end
 
     def self.numeric?(obj)
-      obj.to_s.match(/\A[+-]?\d+?(\.\d+)?\Z/) == nil ? false : true
+      obj.to_s.match(/\A[+-]?\d+?(\.\d+)?([eE]\d+)?\Z/) == nil ? false : true
     end
 
     def self.option?(arg)

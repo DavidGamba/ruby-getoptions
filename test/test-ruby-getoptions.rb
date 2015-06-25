@@ -168,14 +168,14 @@ describe GetOptions do
     options[:float].must_be_kind_of Float
     remaining.must_equal ["Hello", "world!"]
 
-    # options, remaining = GetOptions.parse(
-    #   ['Hello', '--string=test', 'world!', '--float', '-12.345'],
-    #   {'string=s' => :string, 'float=f' => :float},
-    # )
-    # options[:string].must_equal 'test'
-    # options[:float].must_equal(-12.345)
-    # options[:float].must_be_kind_of Float
-    # remaining.must_equal ['Hello', 'world!']
+    options, remaining = GetOptions.parse(
+      ['Hello', '--string=test', 'world!', '--float', '-12.345'],
+      {'string=s' => :string, 'float=f' => :float},
+    )
+    options[:string].must_equal 'test'
+    options[:float].must_equal(-12.345)
+    options[:float].must_be_kind_of Float
+    remaining.must_equal ['Hello', 'world!']
 
     options, remaining = GetOptions.parse(
       ['Hello', '--string=test', 'world!', '--float', '12'],
@@ -185,6 +185,15 @@ describe GetOptions do
     options[:float].must_equal 12
     options[:float].must_be_kind_of Float
     remaining.must_equal ['Hello', 'world!']
+
+    options, remaining = GetOptions.parse(
+      ['--f1=123.45e1', '--f2', '123.45E2'],
+      {'f1=f' => :f1, 'f2=f' => :f2}
+    )
+    options[:f1].must_equal 1234.5
+    options[:f2].must_equal 12345.0
+    options[:f1].must_be_kind_of Float
+    options[:f2].must_be_kind_of Float
   end
 
   it 'should fail with non floats for float options' do
