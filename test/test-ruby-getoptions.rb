@@ -471,13 +471,44 @@ describe GetOptions do
 
   it 'should support bundling' do
     options, remaining = GetOptions.parse(
-      ['-st', 'test'],
-      {'s' => :s, 't=s' => :t},
+      ['-opt', 'arg', 'test'],
+      {'o' => :o, 'p' => :p, 't=s' => :t},
       {:mode => 'bundling'}
     )
-    options[:s].must_equal true
-    options[:t].must_equal 'test'
-    remaining.must_be_empty
+    options[:o].must_equal true
+    options[:p].must_equal true
+    options[:t].must_equal 'arg'
+    remaining.must_equal ["test"]
+
+    options, remaining = GetOptions.parse(
+      ['-opt=arg', 'test'],
+      {'o' => :o, 'p' => :p, 't=s' => :t},
+      {:mode => 'bundling'}
+    )
+    options[:o].must_equal true
+    options[:p].must_equal true
+    options[:t].must_equal 'arg'
+    remaining.must_equal ["test"]
+  end
+
+  # Enforce Single Dash
+
+  it 'should support single dash mode' do
+    options, remaining = GetOptions.parse(
+      ['-opt', 'arg', 'test'],
+      {'o=s' => :o},
+      {:mode => 'singleDash'}
+    )
+    options[:o].must_equal 'pt'
+    remaining.must_equal ["arg", "test"]
+
+    options, remaining = GetOptions.parse(
+      ['-opt=arg', 'test'],
+      {'o=s' => :o},
+      {:mode => 'singleDash'}
+    )
+    options[:o].must_equal 'pt=arg'
+    remaining.must_equal ["test"]
   end
 
   # Internal methods
