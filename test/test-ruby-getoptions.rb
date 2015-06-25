@@ -497,7 +497,7 @@ describe GetOptions do
     options, remaining = GetOptions.parse(
       ['-opt', 'arg', 'test'],
       {'o=s' => :o},
-      {:mode => 'singleDash'}
+      {:mode => 'single_dash'}
     )
     options[:o].must_equal 'pt'
     remaining.must_equal ["arg", "test"]
@@ -505,7 +505,7 @@ describe GetOptions do
     options, remaining = GetOptions.parse(
       ['-opt=arg', 'test'],
       {'o=s' => :o},
-      {:mode => 'singleDash'}
+      {:mode => 'single_dash'}
     )
     options[:o].must_equal 'pt=arg'
     remaining.must_equal ["test"]

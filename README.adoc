@@ -194,7 +194,7 @@ option: `"t"`, argument: `"arg"` footnote:[Argument gets type casted depending o
 
 === Enforce Single Dash Mode
 
-Set by defining `{mode: "enforce_single_dash"}` in the options hash.
+Set by defining `{mode: "enforce_single_dash"}` or `{mode: "single_dash"}` in the options hash.
 
 |===
 |Given option |Interpretation
@@ -339,7 +339,7 @@ a| destype:: `@`
 a|*Optional with increment*, Not supported yet. Does it make sense to?
 ////
 
-Options:: `fail_on_unknown`, `pass_through`.
+Options:: `fail_on_unknown`, `pass_through`, `mode`.
 
 == Description
 
