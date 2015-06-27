@@ -37,7 +37,8 @@ class GetOptions
   # External method, this is the main interface
   def self.parse(args, option_map = {}, options = {})
     @options = options
-    set_initial_values()
+    @option_map = {}
+    @level = 2
     set_logging()
     info "input args: '#{args}'"
     info "input option_map: '#{option_map}'"
@@ -51,6 +52,18 @@ class GetOptions
 
 private
 
+    # Regex definitions
+    ALIASES_REGEX       = /^([^=:+!]+)([=:+!]?.*?)$/
+    IS_OPTION_REGEX     = /^--?[^\d]/
+    INTEGER_REGEX       = /\A[+-]?\d+?\Z/
+    NUMERIC_REGEX       = /\A[+-]?\d+?(\.\d+)?([eE]\d+)?\Z/
+    OPT_SPEC_REGEX      = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)$/
+    NFLAG_REGEX         = /^no-?/
+    KEY_VALUE_REGEX     = /^([^=]+)=(.*)$/
+    OPTION_REGEX        = /^(--?)([^=]+)(=?)(.*?)$/
+    REPEAT_REGEX        = /\{(\d+)?(?:,\s?(\d+)?)?\}/
+    NO_DEFINITION_REGEX = /^[=:+!]/
+
 # This is how the instance variable @option_map looks like:
 # @option_map:
 # {
@@ -61,20 +74,6 @@ private
 #     :negated=> true
 #   }
 # }
-
-    def self.set_initial_values()
-      # Regex definitions
-      @end_processing_regex = /^--$/
-      @type_regex           = /[siof]/
-      @desttype_regex       = /[@%]/
-      @repeat_regex         = /\{\d+(?:,\s?\d+)?\}/
-      @valid_simbols        = '=:+!'
-      @is_option_regex      = /^--?[^\d]/
-
-      # Instance variables
-      @option_map = {}
-      @level = 2
-    end
 
     def self.info(msg)
       STDERR.puts "INFO  |" + msg if @level <= 1
@@ -102,7 +101,7 @@ private
     # @: definition
     # return: [aliases, ...]
     def self.extract_spec_and_aliases(definition)
-      m = definition.match(/^([^#{@valid_simbols}]+)([#{@valid_simbols}]?.*?)$/)
+      m = ALIASES_REGEX.match(definition)
       return m[2], m[1].split('|')
     end
 
@@ -110,7 +109,7 @@ private
       opt_map = {}
       definition_list = []
       option_map.each_pair do |k, v|
-        if k.match(/^[=:+!]/)
+        if NO_DEFINITION_REGEX =~ k
           fail ArgumentError,
               "GetOptions option_map missing name in definition: '#{k}'"
         end
@@ -168,13 +167,12 @@ private
         return 'increment', 'i', nil, nil
       end
 
-      opt_spec_regex = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)$/
       arg_spec = String.new
       type     = nil
       desttype = nil
       repeat   = nil
 
-      matches = opt_spec.match(opt_spec_regex)
+      matches = OPT_SPEC_REGEX.match(opt_spec)
       if matches.nil?
         fail ArgumentError, "Wrong option specification: '#{opt_spec}'!"
       end
@@ -189,7 +187,7 @@ private
         desttype = matches[3]
       end
       if matches[4] != ''
-        r_matches = matches[4].match(/\{(\d+)?(?:,\s?(\d+)?)?\}/)
+        r_matches = REPEAT_REGEX.match(matches[4])
         min = r_matches[1]
         min ||= 1
         min = min.to_i
@@ -250,10 +248,10 @@ private
       matches = []
       hash.each_pair do |k, v|
         local_matches = []
-        k.map { |name| local_matches.push name if name.match(regex) }
+        k.map { |name| local_matches.push name if regex.match(name) }
         if v[:arg_spec] == 'nflag'
           k.map do |name|
-            if opt.match(/^no-?/) && name.match(/^#{opt.gsub(/no-?/, '')}$/)
+            if NFLAG_REGEX =~ opt && /^#{opt.gsub(/no-?/, '')}$/ =~ name
               # Update the given hash
               hash[k][:negated] = true
               local_matches.push name
@@ -437,7 +435,7 @@ private
         abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       input = args.shift
-      if (matches = input.match(/^([^=]+)=(.*)$/))
+      if (matches = KEY_VALUE_REGEX.match(input))
         key = matches[1]
         arg = matches[2]
       else
@@ -454,15 +452,15 @@ private
     end
 
     def self.integer?(obj)
-      obj.to_s.match(/\A[+-]?\d+?\Z/) == nil ? false : true
+      (INTEGER_REGEX =~ obj.to_s) == nil ? false : true
     end
 
     def self.numeric?(obj)
-      obj.to_s.match(/\A[+-]?\d+?(\.\d+)?([eE]\d+)?\Z/) == nil ? false : true
+      (NUMERIC_REGEX =~ obj.to_s) == nil ? false : true
     end
 
     def self.option?(arg)
-      result = !!(arg.match(@is_option_regex))
+      result = !!(IS_OPTION_REGEX =~ arg)
       debug "Is option? '#{arg}' #{result}"
       result
     end
@@ -473,7 +471,6 @@ private
     # @: s string, mode string
     # return: options []string, argument string
     def self.isOption?(s, mode)
-      isOptionRegex = /^(--?)([^=]+)(=?)(.*?)$/
       # Handle special cases
       if s == '--'
         return ['--'], ''
@@ -482,7 +479,7 @@ private
       end
       options = Array.new
       argument = String.new
-      matches = s.match(isOptionRegex)
+      matches = OPTION_REGEX.match(s)
       if !matches.nil?
         if matches[1] == '--'
           options.push matches[2]
