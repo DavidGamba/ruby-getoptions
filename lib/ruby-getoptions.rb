@@ -37,32 +37,43 @@ class GetOptions
   # External method, this is the main interface
   def self.parse(args, option_map = {}, options = {})
     @options = options
-    set_initial_values()
+    @option_map = {}
+    @level = 2
     set_logging()
     info "input args: '#{args}'"
     info "input option_map: '#{option_map}'"
     info "input options: '#{options}'"
     @option_map = generate_extended_option_map(option_map)
-    option_result, remaining_args = process_arguments(args, {}, [])
+    option_result, remaining_args = iterate_over_arguments(args, options[:mode])
     debug "option_result: '#{option_result}', remaining_args: '#{remaining_args}'"
     @log = nil
     [option_result, remaining_args]
   end
 
 private
-    def self.set_initial_values()
-      # Regex definitions
-      @end_processing_regex = /^--$/
-      @type_regex           = /[siof]/
-      @desttype_regex       = /[@%]/
-      @repeat_regex         = /\{\d+(?:,\s?\d+)?\}/
-      @valid_simbols        = '=:+!'
-      @is_option_regex      = /^--?[^\d]/
 
-      # Instance variables
-      @option_map = {}
-      @level = 2
-    end
+    # Regex definitions
+    ALIASES_REGEX       = /^([^=:+!]+)([=:+!]?.*?)$/
+    IS_OPTION_REGEX     = /^--?[^\d]/
+    INTEGER_REGEX       = /\A[+-]?\d+?\Z/
+    NUMERIC_REGEX       = /\A[+-]?\d+?(\.\d+)?([eE]\d+)?\Z/
+    OPT_SPEC_REGEX      = /^([=:])([siof])([@%]?)((?:\{[^}]+\})?)$/
+    NFLAG_REGEX         = /^no-?/
+    KEY_VALUE_REGEX     = /^([^=]+)=(.*)$/
+    OPTION_REGEX        = /^(--?)([^=]+)(=?)(.*?)$/
+    REPEAT_REGEX        = /\{(\d+)?(?:,\s?(\d+)?)?\}/
+    NO_DEFINITION_REGEX = /^[=:+!]/
+
+# This is how the instance variable @option_map looks like:
+# @option_map:
+# {
+#   ["opt", "alias"] => {
+#     :arg_spec=>"nflag",
+#     :arg_opts=>["b", nil, nil],
+#     :opt_dest=>:flag3,
+#     :negated=> true
+#   }
+# }
 
     def self.info(msg)
       STDERR.puts "INFO  |" + msg if @level <= 1
@@ -85,29 +96,54 @@ private
       end
     end
 
+    # Given an option definition, it extracts the aliases and puts them into an array.
+    #
+    # @: definition
+    # return: [aliases, ...]
+    def self.extract_spec_and_aliases(definition)
+      m = ALIASES_REGEX.match(definition)
+      return m[2], m[1].split('|')
+    end
+
     def self.generate_extended_option_map(option_map)
       opt_map = {}
-      unique_options = []
+      definition_list = []
       option_map.each_pair do |k, v|
-        if k.match(/^[=:+!]/)
+        if NO_DEFINITION_REGEX =~ k
           fail ArgumentError,
               "GetOptions option_map missing name in definition: '#{k}'"
         end
-        definitions = k.match(/^([^#{@valid_simbols}]+)[#{@valid_simbols}]?(.*?)$/)[1].split('|')
-        unique_options.push(*definitions)
-        arg_spec, *arg_opts = process_type(k.match(/^[^#{@valid_simbols}]+([#{@valid_simbols}]?(.*?))$/)[1])
+        opt_spec, definitions = extract_spec_and_aliases(k)
+        arg_spec, *arg_opts = process_opt_spec(opt_spec)
         opt_map[definitions] = { :arg_spec => arg_spec, :arg_opts => arg_opts, :opt_dest => v }
+
+        definition_list.push(*definitions)
       end
-      unless unique_options.uniq.length == unique_options.length
-        duplicate_elements = unique_options.find { |e| unique_options.count(e) > 1 }
-        fail ArgumentError,
-            "GetOptions option_map needs to have unique options: '#{duplicate_elements}'"
-      end
+      fail_on_duplicate_definitions(definition_list)
       debug "opt_map: #{opt_map}"
       opt_map
     end
 
-    def self.process_type(type_str)
+    def self.fail_on_duplicate_definitions(definition_list)
+      definition_list.map!{ |x| x.downcase }
+      unless definition_list.uniq.length == definition_list.length
+        duplicate_elements = definition_list.find { |e| definition_list.count(e) > 1 }
+        fail ArgumentError,
+            "GetOptions option_map needs to have unique case insensitive options: '#{duplicate_elements}'"
+      end
+      true
+    end
+
+
+    # Checks an option specification string and returns an array with
+    # argument_spec, type, destype and repeat.
+    #
+    # The Option Specification provides a nice, compact interface. This method
+    # extracts the different parts from that.
+    #
+    # @: type definition
+    # return arg_spec, type, destype, repeat
+    def self.process_opt_spec(opt_spec)
       # argument_specification:
       # [ '',
       #   '!',
@@ -121,102 +157,122 @@ private
       # destype: ['@', '%']
       # repeat: { [ min ] [ , [ max ] ] }
 
-      # flag: ''
-      if type_str.match(/^$/)
-        ['flag']
-      # negatable flag: '!'
-      elsif type_str.match(/^!$/)
-        ['nflag']
-      # incremental int: '+'
-      elsif type_str.match(/^\+$/)
-        ['increment']
-      # required: '= type [destype] [repeat]'
-      elsif (matches = type_str.match(/^=(#{@type_regex})(#{@desttype_regex}?)(#{@repeat_regex}?)$/))
-        ['required', matches[1], matches[2], matches[3]]
-      # optional with default: ': number [destype]'
-      elsif (matches = type_str.match(/^:(\d+)(#{@desttype_regex}?)$/))
-        ['optional_with_default', matches[1], matches[2]]
-      # optional with increment: ': + [destype]'
-      elsif (matches = type_str.match(/^:(\+)(#{@desttype_regex}?)$/))
-        ['optional_with_increment', matches[1], matches[2]]
-      # optional: ': type [destype]'
-      elsif (matches = type_str.match(/^:(#{@type_regex})(#{@desttype_regex}?)$/))
-        ['optional', matches[1], matches[2]]
-      else
-        fail ArgumentError, "Unknown option type: '#{type_str}'!"
+      # Handle special cases
+      case opt_spec
+      when ''
+        return 'flag', 'b', nil, nil
+      when '!'
+        return 'nflag', 'b', nil, nil
+      when '+'
+        return 'increment', 'i', nil, nil
       end
+
+      arg_spec = String.new
+      type     = nil
+      desttype = nil
+      repeat   = nil
+
+      matches = OPT_SPEC_REGEX.match(opt_spec)
+      if matches.nil?
+        fail ArgumentError, "Wrong option specification: '#{opt_spec}'!"
+      end
+      case matches[1]
+      when '='
+        arg_spec = 'required'
+      when ':'
+        arg_spec = 'optional'
+      end
+      type = matches[2]
+      if matches[3] != ''
+        desttype = matches[3]
+      end
+      if matches[4] != ''
+        r_matches = REPEAT_REGEX.match(matches[4])
+        min = r_matches[1]
+        min ||= 1
+        min = min.to_i
+        max = r_matches[2]
+        max = min if max.nil?
+        max = max.to_i
+        if min > max
+          fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
+        end
+        repeat = [min, max]
+      end
+      return arg_spec, type, desttype, repeat
     end
 
-    def self.process_arguments(args, option_result, remaining_args)
-      if args.size > 0
+    def self.iterate_over_arguments(args, mode)
+      option_result = {}
+      remaining_args = []
+      while args.size > 0
         arg = args.shift
-        if arg.match(@end_processing_regex)
+        options, argument = isOption?(arg, mode)
+        if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
-        elsif option? arg
-          option_result, args, remaining_args = process_option(arg, option_result, args, remaining_args)
-          option_result, remaining_args = process_arguments(args, option_result, remaining_args)
+        elsif options.size >= 1
+          option_result, remaining_args, args = process_option(arg, option_result, args, remaining_args, options, argument)
         else
           remaining_args.push arg
-          option_result, remaining_args = process_arguments(args, option_result, remaining_args)
         end
       end
       return option_result, remaining_args
     end
 
-    def self.process_option(orig_opt, option_result, args, remaining_args)
-      opt = orig_opt.gsub(/^-+/, '')
-      # Check if option has a value defined with an equal sign
-      if (matches = opt.match(/^([^=]+)=(.*)$/))
-        opt = matches[1]
-        arg = matches[2]
+    def self.process_option(orig_opt, option_result, args, remaining_args, options, argument)
+      options.each_with_index do |opt, i|
+        # Make it obvious that find_option_matches is updating the instance variable
+        opt_match, @option_map = find_option_matches(options[i])
+        if opt_match.nil?
+          remaining_args.push orig_opt
+          return option_result, remaining_args, args
+        end
+        # Only pass argument to the last option in the options array
+        args.unshift argument unless argument.nil? || argument == "" || i < (options.size - 1)
+        debug "new args: #{args}"
+        option_result, args = execute_option(opt_match, option_result, args)
+        debug "option_result: #{option_result}"
       end
-      # Make it obvious that find_option_matches is updating the instance variable
-      opt_match, @option_map = find_option_matches(opt)
-      if opt_match.nil?
-        remaining_args.push orig_opt
-        return option_result, args, remaining_args
-      end
-      args.unshift arg unless arg.nil?
-      debug "new args: #{args}"
-      option_result, args = execute_option(opt_match, option_result, args)
-      debug "option_result: #{option_result}"
-      return option_result, args, remaining_args
+      return option_result, remaining_args, args
     end
 
-    def self.find_option_matches(opt)
+    # find_option_matches_in_hash iterates over the option_map hash and returns
+    # a list of entries that match the given option.
+    #
+    # NOTE: This method updates the given hash.
+    #
+    # @: option, hash, regex
+    # return: matches, hash
+    def self.find_option_matches_in_hash(opt, hash, regex)
       matches = []
-      @option_map.each_pair do |k, v|
+      hash.each_pair do |k, v|
         local_matches = []
-        k.map { |name| local_matches.push name if name.match(/^#{opt}$/) }
+        k.map { |name| local_matches.push name if regex.match(name) }
         if v[:arg_spec] == 'nflag'
           k.map do |name|
-            if opt.match(/^no-?/) && name.match(/^#{opt.gsub(/no-?/, '')}$/)
-              # Update the instance variable
-              @option_map[k][:negated] = true
+            if NFLAG_REGEX =~ opt && /^#{opt.gsub(/no-?/, '')}$/ =~ name
+              # Update the given hash
+              hash[k][:negated] = true
               local_matches.push name
+              debug "hash: #{hash}"
             end
           end
         end
         matches.push(k) if local_matches.size > 0
       end
-      # FIXME: Too much repetition.
+      return matches, hash
+    end
+
+    def self.find_option_matches(opt)
+      matches = []
+      m, @option_map = find_option_matches_in_hash(opt, @option_map, /^#{opt}$/)
+      matches.push(*m)
+
       # If the strict match returns no results, lets be more permisive.
       if matches.size == 0
-        @option_map.each_pair do |k, v|
-          local_matches = []
-          k.map { |name| local_matches.push name if name.match(/^#{opt}/) }
-          if v[:arg_spec] == 'nflag'
-            k.map do |name|
-              if opt.match(/^no-?/) && name.match(/^#{opt.gsub(/^no-?/, '')}/)
-                # Update the instance variable
-                @option_map[k][:negated] = true
-                local_matches.push name
-              end
-            end
-          end
-          matches.push(k) if local_matches.size > 0
-        end
+        m, @option_map = find_option_matches_in_hash(opt, @option_map, /^#{opt}/)
+        matches.push(*m)
       end
 
       if matches.size == 0
@@ -234,6 +290,8 @@ private
       [matches[0], @option_map]
     end
 
+    # TODO: Some specs allow for Symbols and procedures, others only Symbols.
+    #       Fail during init and not during run time.
     def self.execute_option(opt_match, option_result, args)
       opt_def = @option_map[opt_match]
       debug "#{opt_def[:arg_spec]}"
@@ -268,103 +326,90 @@ private
       [option_result, args]
     end
 
+    # process_option_type Given an arg, it checks what type is the option expecting and based on that saves
     def self.process_option_type(arg, opt_match, optional = false)
       case @option_map[opt_match][:arg_opts][0]
       when 's'
         arg = '' if optional && arg.nil?
       when 'i'
         arg = 0 if optional && arg.nil?
-        unless integer?(arg)
-          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Integer'!"
-        end
+        type_error(arg, opt_match[0], 'Integer', lambda { |x| integer?(x) })
         arg = arg.to_i
       when 'f'
         arg = 0 if optional && arg.nil?
-        unless numeric?(arg)
-          abort "[ERROR] argument for option '#{opt_match[0]}' is not of type 'Float'!"
-        end
+        type_error(arg, opt_match[0], 'Float', lambda { |x| numeric?(x) })
         arg = arg.to_f
       when 'o'
-        # FIXME
+        # TODO
         abort "[ERROR] Unimplemented type 'o'!"
       end
       return arg
+    end
+
+    def self.type_error(arg, opt, type, func)
+      unless func.call(arg)
+        abort "[ERROR] argument for option '#{opt}' is not of type '#{type}'!"
+      end
     end
 
     def self.process_desttype(option_result, args, opt_match, optional = false)
       opt_def = @option_map[opt_match]
       case opt_def[:arg_opts][1]
       when '@'
-        unless option_result[opt_def[:opt_dest]].kind_of? Array
-          option_result[opt_def[:opt_dest]] = []
-        end
-        # check for repeat specifier {min, max}
-        if (matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/))
-          min = matches[1].to_i
-          max = matches[2]
-          max = min if max.nil?
-          max = max.to_i
-          if min > max
-            fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
-          end
-          while min > 0
-            debug "min: #{min}, max: #{max}"
-            min -= 1
-            max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
-            args, arg = process_desttype_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]].push arg
-          end
-          while max > 0
-            debug "min: #{min}, max: #{max}"
-            max -= 1
-            break if args.size <= 0
-            args, arg = process_desttype_arg(args, opt_match, optional, true)
-            break if arg.nil?
-            option_result[opt_def[:opt_dest]].push arg
-          end
-        else
-          args, arg = process_desttype_arg(args, opt_match, optional)
-          option_result[opt_def[:opt_dest]].push arg
-        end
+        check_for_repeat(Array, option_result, args, opt_match, optional, opt_def)
       when '%'
-        unless option_result[opt_def[:opt_dest]].kind_of? Hash
-          option_result[opt_def[:opt_dest]] = {}
-        end
-        # check for repeat specifier {min, max}
-        if (matches = opt_def[:arg_opts][2].match(/\{(\d+)(?:,\s?(\d+))?\}/))
-          min = matches[1].to_i
-          max = matches[2]
-          max = min if max.nil?
-          max = max.to_i
-          if min > max
-            fail ArgumentError, "GetOptions repeat, max '#{max}' <= min '#{min}'"
-          end
-          while min > 0
-            debug "min: #{min}, max: #{max}"
-            min -= 1
-            max -= 1
-            abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
-            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]][key] = arg
-          end
-          while max > 0
-            debug "min: #{min}, max: #{max}"
-            max -= 1
-            break if args.size <= 0
-            break if option?(args[0])
-            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-            option_result[opt_def[:opt_dest]][key] = arg
-          end
-        else
-          args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
-          option_result[opt_def[:opt_dest]][key] = arg
-        end
+        check_for_repeat(Hash, option_result, args, opt_match, optional, opt_def)
       else
         args, arg = process_desttype_arg(args, opt_match, optional)
         option_result[opt_def[:opt_dest]] = arg
       end
       [option_result, args]
+    end
+
+    def self.check_for_repeat(type, option_result, args, opt_match, optional, opt_def)
+      unless option_result[opt_def[:opt_dest]].kind_of? type
+        option_result[opt_def[:opt_dest]] = type.new
+      end
+      # check for repeat
+      if !opt_def[:arg_opts][2].nil?
+        min = opt_def[:arg_opts][2][0]
+        max = opt_def[:arg_opts][2][1]
+        while min > 0
+          debug "min: #{min}, max: #{max}"
+          min -= 1
+          max -= 1
+          abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
+          if type == Array
+            args, arg = process_desttype_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]].push arg
+          elsif type == Hash
+            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]][key] = arg
+          end
+        end
+        while max > 0
+          debug "min: #{min}, max: #{max}"
+          max -= 1
+          break if args.size <= 0
+          if type == Array
+            args, arg = process_desttype_arg(args, opt_match, optional, true)
+            break if arg.nil?
+            option_result[opt_def[:opt_dest]].push arg
+          elsif type == Hash
+            break if option?(args[0])
+            args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+            option_result[opt_def[:opt_dest]][key] = arg
+          end
+        end
+      else
+        if type == Array
+          args, arg = process_desttype_arg(args, opt_match, optional)
+          option_result[opt_def[:opt_dest]].push arg
+        elsif type == Hash
+          args, arg, key = process_desttype_hash_arg(args, opt_match, optional)
+          option_result[opt_def[:opt_dest]][key] = arg
+        end
+      end
     end
 
     def self.process_desttype_arg(args, opt_match, optional, required = false)
@@ -390,7 +435,7 @@ private
         abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       input = args.shift
-      if (matches = input.match(/^([^=]+)=(.*)$/))
+      if (matches = KEY_VALUE_REGEX.match(input))
         key = matches[1]
         arg = matches[2]
       else
@@ -407,16 +452,52 @@ private
     end
 
     def self.integer?(obj)
-      obj.to_s.match(/\A[+-]?\d+?\Z/) == nil ? false : true
+      (INTEGER_REGEX =~ obj.to_s) == nil ? false : true
     end
 
     def self.numeric?(obj)
-      obj.to_s.match(/\A[+-]?\d+?(\.\d+)?\Z/) == nil ? false : true
+      (NUMERIC_REGEX =~ obj.to_s) == nil ? false : true
     end
 
     def self.option?(arg)
-      result = !!(arg.match(@is_option_regex))
+      result = !!(IS_OPTION_REGEX =~ arg)
       debug "Is option? '#{arg}' #{result}"
       result
+    end
+
+    # Check if the given string is an option (begins with -).
+    # If the string is an option, it returns the options in that string as well
+    # as any arguments in it.
+    # @: s string, mode string
+    # return: options []string, argument string
+    def self.isOption?(s, mode)
+      # Handle special cases
+      if s == '--'
+        return ['--'], ''
+      elsif s == '-'
+        return ['-'], ''
+      end
+      options = Array.new
+      argument = String.new
+      matches = OPTION_REGEX.match(s)
+      if !matches.nil?
+        if matches[1] == '--'
+          options.push matches[2]
+          argument = matches[4]
+        else
+          case mode
+          when 'bundling'
+            options = matches[2].split('')
+            argument = matches[4]
+          when 'singleDash', 'single_dash', 'enforce_single_dash'
+            options.push matches[2][0].chr
+            argument = matches[2][1..-1] + matches[3] + matches[4]
+          else
+            options.push matches[2]
+            argument = matches[4]
+          end
+        end
+      end
+      return options, argument
     end
 end

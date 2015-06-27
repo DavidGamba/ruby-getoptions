@@ -2,13 +2,216 @@
 David Gamba, https://github.com/DavidGamba
 :version: 0.1
 :idprefix:
+:name: ruby-getoptions
+:toc: macro
 
 Ruby option parser based on Perl's Getopt::Long.
 
 image:https://badge.fury.io/rb/ruby-getoptions.svg["Gem Version", link="http://badge.fury.io/rb/ruby-getoptions"]
-image:https://coveralls.io/repos/DavidGamba/ruby-getoptions/badge.svg["Coverage Status", link="https://coveralls.io/r/DavidGamba/ruby-getoptions"]
 image:https://codeclimate.com/github/DavidGamba/ruby-getoptions/badges/gpa.svg["Code Climate", link="https://codeclimate.com/github/DavidGamba/ruby-getoptions"]
 image:https://travis-ci.org/DavidGamba/ruby-getoptions.svg["Build Status", link="https://travis-ci.org/DavidGamba/ruby-getoptions"]
+
+toc::[]
+
+== Introduction
+
+Option parsing is the act of taking command line arguments and converting them into meaningful structures within the program.
+
+An option parser should support, at least, the following:
+
+Flag options:: `True` when passed on the command line.
+For example:
++
+`ls --all`
+
+options with String arguments:: The option will accept a string argument.
+For example:
++
+`grepp --ignore .txt`
++
+Additionally, arguments to options can be passed with the `=` symbol.
++
+`grepp --ignore=.txt`
+
+The features listed above are enough to create basic programs but an option parser should do better:
+
+options with Integer arguments:: Parse an option string argument into an Integer and provide an user error if the string provided is not an integer.
+For example:
++
+`grepp --contex-lines 3`
++
+and:
++
+`grepp --context-lines string`
++
+  Error: 'string' is not a valid integer.
+
+options with Floating point arguments:: Parse an option string argument into a Floating point value and provide an user error if the string provided is not a valid floating point.
+For example:
++
+`command --approximation 3.5`
++
+and:
++
+`command --approximation string`
++
+  Error: 'string' is not a valid floating point value.
+
+The features listed above relieve the programmer from the cumbersome task of converting the option argument into the expected type.
+
+Another feature a better option parser should have is the ability to set a flag to `False`.
+
+Negatable flag options:: `True` when passed on the command line without any modifier and `False` when the `--no-` modifier is prefixed.
+For example:
++
+`command --verbose`
++
+and:
++
+`command --no-verbose`, or `command --noverbose`
+
+That covers the most basic set of features, but still it is not enough to get past a basic program. The following features will allow for a more complete interface.
+
+options with array arguments:: This allows the same option to be used multiple times with different arguments.
+The list of arguments will be saved into an Array structure inside the program.
+For example:
++
+`list-files --exclude .txt --exclude .html --exclude .pdf`
+
+options with Key Value arguments:: This allows the same option to be used multiple times with arguments of key value type.
+For example:
++
+`rpmbuild --define name=myrpm --define version=123`
+
+Both features above should support the basic types listed before: string, integer and floating point.
+
+The features above are useful when you have a variable amount of arguments, but it becomes cumbersome for the user when the number of entries is always the same.
+The features described below and meant to handle the cases when each option has a known number of multiple entries.
+
+options with array arguments and multiple entries:: This allows the user to save typing.
+For example:
++
+Instead of writting: `color --r 10 --g 20 --b 30 --next-option` or `color --rgb 10 --rgb 20 --rgb 30 --next-option`
++
+The input could be: `color --rgb 10 20 30 --next-option`
+
+options with key value arguments and multiple entries:: This allows the user to save typing.
+For example:
++
+Instead of writting: `connection --server hostname=serverIP --server port=123 --client hostname=localhost --client port=456`
++
+The input could be: `connection --server hostname=serverIP port=123 --client hostname=localhost port=456`
+
+That covers a complete user interface that is flexible enough to accommodate most programs.
+The following are advanced features:
+
+stop parsing options when `--` is passed:: Useful when arguments start with dash `-` and you don't want them interpreted as options.
+
+Allow passing options and non-options in any order:: Some option parsers force you to put the options before or after the arguments. That is really annoying!
+
+Allow pass through:: Have an option to pass through unmatched options.
+Useful when writing programs with multiple options depending on the main arguments.
+The initial parser will only capture the help or global options and pass through everything else.
+Additional parsers are invoked on the remaining arguments based on the initial input.
+
+Fail on unknown:: The opposite of the above option.
+Useful if you want to ensure there are no input mistakes and force the application to stop.
+
+Warn on unknown:: Less strict parsing of options.
+This will warn the user that the option used is not a valid option but it will not stop the rest of the program.
+
+option aliases:: Options should be allowed to have different aliases.
+For example, the same option could be invoked with `--address` or `--hostname`.
+
+incremental option:: Some options can be passed more than one to increment an internal counter.
+For example:
++
+`command --v --v --v`
++
+Could increase the verbosity level each time the option is passed.
+
+Additional types:: The option parser could provide converters to additional types.
+The disadvantage of providing non basic types is that the option parser grows in size.
+
+options with optional arguments:: If the argument is not passed. The option will set the default value for the option type.
+
+option flags that call a method internally:: If all the flag is doing is call a method or function when present, then having a way to call that function directly saves the programmer some time.
+
+Notice how so far only long options (options starting with double dash `--`) have been mentioned.
+There are 3 main ways to handle short options (options starting with only one dash `-`), see the <<operation_modes>> section for details.
+
+[[operation_modes]]
+== Operation Modes
+
+The behaviour for long options (options starting with double dash `--`) is consistent across operation modes.
+The behaviour for short options (options starting with only one dash `-`) depends on the _operation mode_.
+The sections below show the different operation modes.
+
+=== Normal Mode (default)
+
+|===
+|Given argument |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"opt"`, argument: `nil`
+
+|-opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
+
+
+=== Bundling Mode
+
+Set by defining `{mode: "bundling"}` in the options hash.
+
+|===
+|Given option |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"o"`, argument: `nil` +
+option: `"p"`, argument: `nil` +
+option: `"t"`, argument: `nil`
+
+|-opt=arg
+a|option: `"o"`, argument: `nil` +
+option: `"p"`, argument: `nil` +
+option: `"t"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
+
+=== Enforce Single Dash Mode
+
+Set by defining `{mode: "enforce_single_dash"}` or `{mode: "single_dash"}` in the options hash.
+
+|===
+|Given option |Interpretation
+
+|--opt
+a|option: `"opt"`,  argument: `nil`
+
+|--opt=arg
+a|option: `"opt"`, argument: `"arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt
+a|option: `"o"`, argument: `"pt"` footnote:[Argument gets type casted depending on option definition.]
+
+|-opt=arg
+a|option: `"o"`, argument: `"pt=arg"` footnote:[Argument gets type casted depending on option definition.]
+
+|===
 
 == Quick overview
 
@@ -49,13 +252,15 @@ Version is {version}
 ----
 remaining = ['non-option', 'non-option2', '--nothing']
 
-options   = {:flag   => true,
-             :string => 'mystring',
-             :int    => 7,
-             :float  => 3.14}
+options   = {:flag   => true,       # Boolean
+             :string => 'mystring', # String
+             :int    => 7,          # Integer
+             :float  => 3.14}       # Float
 ----
 
 == Synopsis
+
+Quick reference of all the _option definitions_ available.
 
 [source,ruby]
 ----
@@ -134,13 +339,13 @@ a| destype:: `@`
 a|*Optional with increment*, Not supported yet. Does it make sense to?
 ////
 
-Options:: `fail_on_unknown`, `pass_through`.
+Options:: `fail_on_unknown`, `pass_through`, `mode`.
 
 == Description
 
-It will take an `Array[String]` (normally `ARGV`) and a `Hash[String, Object]` (option definition) and it will return a `Hash[Symbol, Object]` (options) of the given arguments and an `Array[String]` (remaining) of the remaining arguments.
+It will take an `Array[String]` (normally `ARGV`, referred to as _arguments_) and a `Hash[String, Object]` (_option definition_) and it will return a `Hash[Symbol, Object]` (_options_) of the given arguments and an `Array[String]` (_remaining_) of the remaining arguments.
 
-It will also excecute any _procedures_ (lamba, procedure, method) in the order their corresponding options were passsed on the command line, and only if they were passed (using the `call` method).
+It will also excecute any _procedures_ (lamba, procedure, method) in the order their corresponding options were passsed on the command line, and only if they were passed (they get executed using the `call` method).
 
 `GetOptions.parse` will `abort` or `fail` if the command line options could not be processed successfully (input error), or if they were defined improperly. See <<errors_exceptions,Errors and Exceptions>> for details.
 
@@ -296,12 +501,21 @@ Returns::
 
 `pass_through`:: disable warning on unknown option. Defalt: `false`.
 
+`mode`:: possible values are "normal", "bundling", "enforce_single_dash". See <<operation_modes>> for details.
+
 [[errors_exceptions]]
 == Errors and Exceptions
 
 * For incorrect _option definitions_ in the script itself it will `fail` with `ArgumentError`.
 
 * For user input errors, it will `abort` (`SystemExit`) with a description of what the user did wrong.
+  - "[ERROR] Option 'X' not found!"
+  - "[WARNING] Option 'X' not found!"
+  - "[ERROR] option 'X' matches multiple names: 'list of matching names'!"
+  - "[ERROR] argument for option 'X' is not of type 'Integer'!"
+  - "[ERROR] argument for option 'X' is not of type 'Float'!"
+  - "[ERROR] missing argument for option 'X'!"
+  - "[ERROR] argument for option 'X' must be of type key=value!"
 
 == How to install it
 
@@ -325,15 +539,9 @@ Ruby 1.8.7+
 [[roadmap]]
 == Roadmap
 
-* Support bundling
-
-  -l -a -c  => -lac
-
-* Support passing values after the short option character
-
-  -i 24  => -i24
-
 * Make matching case insensitive.
+
+* Translations for user facing errors?
 
 * All other Perl's Getopt::Long goodies that seem reasonable to add!
 
