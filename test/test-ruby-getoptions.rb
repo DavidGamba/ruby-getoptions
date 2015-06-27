@@ -170,7 +170,7 @@ describe GetOptions do
 
     options, remaining = GetOptions.parse(
       ['Hello', '--string=test', 'world!', '--float', '-12.345'],
-      {'string=s' => :string, 'float=f' => :float},
+      {'string=s' => :string, 'float=f' => :float}
     )
     options[:string].must_equal 'test'
     options[:float].must_equal(-12.345)
