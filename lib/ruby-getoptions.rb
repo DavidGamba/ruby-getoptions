@@ -125,11 +125,10 @@ private
     end
 
     def self.fail_on_duplicate_definitions(definition_list)
-      definition_list.map!{ |x| x.downcase }
       unless definition_list.uniq.length == definition_list.length
         duplicate_elements = definition_list.find { |e| definition_list.count(e) > 1 }
         fail ArgumentError,
-            "GetOptions option_map needs to have unique case insensitive options: '#{duplicate_elements}'"
+          "GetOptions option_map requires unique options. Duplicates found: '#{duplicate_elements}'"
       end
       true
     end
