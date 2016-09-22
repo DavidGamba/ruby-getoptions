@@ -349,6 +349,42 @@ describe GetOptions do
                   "[ERROR] option 't' matches multiple names '[[\"test\"], [\"testing\"]]'!\n")
   end
 
+  it 'should allow case sensitive matching' do
+    options, remaining = GetOptions.parse(
+      ['Hello', '--test', 'happy', '--Test', 'world!'],
+      { 'flag' => :flag, 'test!' => :test, 'Test!' => :Test }
+    )
+    options[:test].must_equal true
+    options[:Test].must_equal true
+    options[:flag].must_equal nil
+    remaining.must_equal ['Hello', 'happy', 'world!']
+
+    options, remaining = GetOptions.parse(
+      ['Hello', '--test', 'world!'],
+      { 'flag' => :flag, 'test!' => :test, 'Test!' => :Test }
+    )
+    options[:test].must_equal true
+    options[:Test].must_equal nil
+    options[:flag].must_equal nil
+    remaining.must_equal ['Hello', 'world!']
+
+    options, remaining = GetOptions.parse(
+      ['-v'],
+      { 'v|verbose!' => :v, 'V|Version!' => :V }
+    )
+    options[:v].must_equal true
+    options[:V].must_equal nil
+    remaining.must_equal []
+
+    options, remaining = GetOptions.parse(
+      ['-V'],
+      { 'v|verbose!' => :v, 'V|Version!' => :V }
+    )
+    options[:v].must_equal nil
+    options[:V].must_equal true
+    remaining.must_equal []
+  end
+
   it 'should allow @ definition' do
     options, remaining = GetOptions.parse(
       ['-t', 'hello', '-t', 'world!'],
@@ -614,9 +650,15 @@ describe GetOptions do
     GetOptions.fail_on_duplicate_definitions(
       ['Hello', 'world!']
     ).must_equal true
+    GetOptions.fail_on_duplicate_definitions(
+      ['Hello', 'world!', 'hello']
+    ).must_equal true
+    GetOptions.fail_on_duplicate_definitions(
+      ['Hello', 'world!', 'He']
+    ).must_equal true
     lambda {
       GetOptions.fail_on_duplicate_definitions(
-        ['Hello', 'world!', 'hello']
+        ['Hello', 'world!', 'Hello']
       )
     }.must_raise(ArgumentError)
   end

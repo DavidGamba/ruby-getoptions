@@ -494,6 +494,9 @@ Returns::
 
 * Supports command line options with `=`. e.g. You can use `--string=mystring` and `--string mystring`.
 
+* Supports case sensitive options.
+For example, you can use `v` to define `verbose` and `V` to define `Version`.
+
 [[options]]
 == Options
 
