@@ -203,22 +203,20 @@ private
       option_result = {}
       remaining_args = []
       while args.size > 0
-        # If we require order, then push all to remaining once we see an arg that is not an option, i.e.
-        #   does not start with '-' and is not a known option
-        isCmd, dummy = isOption?(args.flatten[0], mode)
-        ## puts "DEBUG: isCmd[0] #{isCmd[0]}  Args0: #{args[0]}"
-        if @options[:require_order] && @option_map.keys.flatten.grep(isCmd[0]).empty? && args[0][0] != '-'
-          remaining_args.push(*args)
-          return option_result, remaining_args
-        end
         arg = args.shift
         options, argument = isOption?(arg, mode)
+        @log.debug "arg: #{arg}, options: #{options}, argument: #{argument}"
         if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
         elsif options.size >= 1
           option_result, remaining_args, args = process_option(arg, option_result, args, remaining_args, options, argument)
         else
+          # If require_order then push all to remaining once we see an arg that is not an option
+          if @options[:require_order]
+            remaining_args.push(arg, *args)
+            return option_result, remaining_args
+          end
           remaining_args.push arg
         end
       end
@@ -418,13 +416,11 @@ private
     end
 
     def self.process_desttype_arg(args, opt_match, optional, required = false)
-
-###
       # If this arg exists, is required, and is string type, just use it
-      if !args[0].nil? && @option_map[opt_match][:arg_opts][0] == 's' && !optional
+      if !args[0].nil? &&
+         @option_map[opt_match][:arg_opts][0] == 's' &&
+         !optional
         arg = process_option_type(args.shift, opt_match, optional)
-###
-
       elsif !args[0].nil? && option?(args[0])
         @log.debug "args[0] option"
         if required

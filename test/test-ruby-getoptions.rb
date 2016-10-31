@@ -60,6 +60,13 @@ describe GetOptions do
     )
     options[:string].must_equal 'test'
     remaining.must_equal ['Hello', 'world!']
+
+    options, remaining = GetOptions.parse(
+      ['Hello', '--string=--test', 'world!'],
+      {'string=s' => :string}
+    )
+    options[:string].must_equal '--test'
+    remaining.must_equal ['Hello', 'world!']
   end
 
   it 'should allow optional strings' do
@@ -87,7 +94,7 @@ describe GetOptions do
     lambda {
       lambda {
         GetOptions.parse(
-          ['--string', '--test'],
+          ['--string'],
           {'string=s' => :string, 'test' => :test}
         )
       }.must_raise(SystemExit)
@@ -661,6 +668,18 @@ describe GetOptions do
         ['Hello', 'world!', 'Hello']
       )
     }.must_raise(ArgumentError)
+  end
+
+  it 'should stop on subcommands' do
+    options, remaining = GetOptions.parse(
+      ['--opt', 'arg', 'subcommand', '--arg', '--help'],
+      { 'opt=s' => :opt,
+        'help' => :help },
+      {:require_order => true}
+    )
+    options[:opt].must_equal 'arg'
+    options[:help].must_equal nil
+    remaining.must_equal ['subcommand', '--arg', '--help']
   end
 
 end
