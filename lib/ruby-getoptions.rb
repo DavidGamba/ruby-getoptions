@@ -229,6 +229,10 @@ private
         opt_match, @option_map = find_option_matches(options[i])
         if opt_match.nil?
           remaining_args.push orig_opt
+          if @options[:require_order]
+            remaining_args.push(*args)
+            return option_result, remaining_args, []
+          end
           return option_result, remaining_args, args
         end
         # Only pass argument to the last option in the options array

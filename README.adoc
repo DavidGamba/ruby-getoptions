@@ -118,8 +118,10 @@ Fail on unknown:: The opposite of the above option.
 Useful if you want to ensure there are no input mistakes and force the application to stop.
 
 Require Order:: Another method to use subcommands.
-It will place all remaining arguments in the remaining array as soon as it finds the first non option argument.
+It will stop parsing arguments as soon as it finds the first non option argument.
 That is, the first argument that doesn't start with `-` that is not an argument of a previous option.
++
+When used in conjunction with Pass Through it should also stop parsing arguments when it finds the first unknown option.
 
 Warn on unknown:: Less strict parsing of options.
 This will warn the user that the option used is not a valid option but it will not stop the rest of the program.

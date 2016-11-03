@@ -680,6 +680,16 @@ describe GetOptions do
     options[:opt].must_equal 'arg'
     options[:help].must_equal nil
     remaining.must_equal ['subcommand', '--arg', '--help']
+
+    options, remaining = GetOptions.parse(
+      ['--opt', 'arg', '--unknown', '--arg', '--help'],
+      { 'opt=s' => :opt,
+        'help' => :help },
+      {:require_order => true, :pass_through => true}
+    )
+    options[:opt].must_equal 'arg'
+    options[:help].must_equal nil
+    remaining.must_equal ['--unknown', '--arg', '--help']
   end
 
 end
