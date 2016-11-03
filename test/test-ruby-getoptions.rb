@@ -675,7 +675,7 @@ describe GetOptions do
       ['--opt', 'arg', 'subcommand', '--arg', '--help'],
       { 'opt=s' => :opt,
         'help' => :help },
-      {:stop_on_command => true}
+      {:require_order => true}
     )
     options[:opt].must_equal 'arg'
     options[:help].must_equal nil

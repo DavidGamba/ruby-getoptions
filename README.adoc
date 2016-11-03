@@ -117,7 +117,7 @@ Additional parsers are invoked on the remaining arguments based on the initial i
 Fail on unknown:: The opposite of the above option.
 Useful if you want to ensure there are no input mistakes and force the application to stop.
 
-Stop on command:: Another method to use subcommands.
+Require Order:: Another method to use subcommands.
 It will place all remaining arguments in the remaining array as soon as it finds the first non option argument.
 That is, the first argument that doesn't start with `-` that is not an argument of a previous option.
 
@@ -508,7 +508,7 @@ For example, you can use `v` to define `verbose` and `V` to define `Version`.
 
 `pass_through`:: disable warning on unknown option. Defalt: `false`.
 
-`stop_on_command`:: If `true`, it will place all remaining arguments in the remaining array as soon as it finds the first non option argument.
+`require_order`:: If `true`, it will place all remaining arguments in the remaining array as soon as it finds the first non option argument.
 That is, the first argument that doesn't start with `-` that is not an argument of a previous option.
 
 `mode`:: possible values are "normal", "bundling", "enforce_single_dash". See <<operation_modes>> for details.

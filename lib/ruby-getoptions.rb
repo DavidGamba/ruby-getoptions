@@ -212,8 +212,8 @@ private
         elsif options.size >= 1
           option_result, remaining_args, args = process_option(arg, option_result, args, remaining_args, options, argument)
         else
-          # If stop_on_command then push all to remaining once we see an arg that is not an option
-          if @options[:stop_on_command]
+          # If require_order then push all to remaining once we see an arg that is not an option
+          if @options[:require_order]
             remaining_args.push(arg, *args)
             return option_result, remaining_args
           end
