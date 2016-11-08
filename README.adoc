@@ -117,6 +117,12 @@ Additional parsers are invoked on the remaining arguments based on the initial i
 Fail on unknown:: The opposite of the above option.
 Useful if you want to ensure there are no input mistakes and force the application to stop.
 
+Require Order:: Another method to use subcommands.
+It will stop parsing arguments as soon as it finds the first non option argument.
+That is, the first argument that doesn't start with `-` that is not an argument of a previous option.
++
+When used in conjunction with Pass Through it should also stop parsing arguments when it finds the first unknown option.
+
 Warn on unknown:: Less strict parsing of options.
 This will warn the user that the option used is not a valid option but it will not stop the rest of the program.
 
@@ -339,7 +345,7 @@ a| destype:: `@`
 a|*Optional with increment*, Not supported yet. Does it make sense to?
 ////
 
-Options:: `fail_on_unknown`, `pass_through`, `mode`.
+Options:: `fail_on_unknown`, `pass_through`, `mode`, `require_order`.
 
 == Description
 
@@ -503,6 +509,11 @@ For example, you can use `v` to define `verbose` and `V` to define `Version`.
 `fail_on_unknown`:: if `true`, it will abort when an unknown option is passed on the commandline. If `false` it will _WARN_ when an unknown option is passed. Default: `false`.
 
 `pass_through`:: disable warning on unknown option. Defalt: `false`.
+
+`require_order`:: If `true`, it will place all remaining arguments in the remaining array as soon as it finds the first non option argument.
+That is, the first argument that doesn't start with `-` that is not an argument of a previous option.
++
+When used in conjunction with `pass_through` it should also stop parsing arguments when it finds the first unknown option.
 
 `mode`:: possible values are "normal", "bundling", "enforce_single_dash". See <<operation_modes>> for details.
 

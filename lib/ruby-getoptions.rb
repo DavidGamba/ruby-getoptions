@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+require 'logger'
+
 class GetOptions
   # argument_specification:
   # [ '',
@@ -38,14 +40,13 @@ class GetOptions
   def self.parse(args, option_map = {}, options = {})
     @options = options
     @option_map = {}
-    @level = 2
     set_logging()
-    info "input args: '#{args}'"
-    info "input option_map: '#{option_map}'"
-    info "input options: '#{options}'"
+    @log.info "input args: '#{args}'"
+    @log.info "input option_map: '#{option_map}'"
+    @log.info "input options: '#{options}'"
     @option_map = generate_extended_option_map(option_map)
     option_result, remaining_args = iterate_over_arguments(args, options[:mode])
-    debug "option_result: '#{option_result}', remaining_args: '#{remaining_args}'"
+    @log.debug "option_result: '#{option_result}', remaining_args: '#{remaining_args}'"
     @log = nil
     [option_result, remaining_args]
   end
@@ -64,6 +65,7 @@ private
     REPEAT_REGEX        = /\{(\d+)?(?:,\s?(\d+)?)?\}/
     NO_DEFINITION_REGEX = /^[=:+!]/
 
+
 # This is how the instance variable @option_map looks like:
 # @option_map:
 # {
@@ -75,24 +77,20 @@ private
 #   }
 # }
 
-    def self.info(msg)
-      STDERR.puts "INFO  |" + msg if @level <= 1
-    end
-
-    def self.debug(msg)
-      STDERR.puts "DEBUG |" + msg if @level <= 0
-    end
-
     def self.set_logging()
+      @log = Logger.new(STDERR)
+      @log.formatter = proc { |severity, datetime, progname, msg|
+        "#{severity} #{caller[3].split(':')[1]} #{msg}\n"
+      }
       case @options[:debug]
       when true
-        @level = 0
+        @log.level = Logger::DEBUG
       when 'debug'
-        @level = 0
+        @log.level = Logger::DEBUG
       when 'info'
-        @level = 1
+        @log.level = Logger::INFO
       else
-        @level = 2
+        @log.level = Logger::WARN
       end
     end
 
@@ -120,7 +118,7 @@ private
         definition_list.push(*definitions)
       end
       fail_on_duplicate_definitions(definition_list)
-      debug "opt_map: #{opt_map}"
+      @log.debug "opt_map: #{opt_map}"
       opt_map
     end
 
@@ -207,12 +205,18 @@ private
       while args.size > 0
         arg = args.shift
         options, argument = isOption?(arg, mode)
+        @log.debug "arg: #{arg}, options: #{options}, argument: #{argument}"
         if options.size >= 1 && options[0] == '--'
           remaining_args.push(*args)
           return option_result, remaining_args
         elsif options.size >= 1
           option_result, remaining_args, args = process_option(arg, option_result, args, remaining_args, options, argument)
         else
+          # If require_order then push all to remaining once we see an arg that is not an option
+          if @options[:require_order]
+            remaining_args.push(arg, *args)
+            return option_result, remaining_args
+          end
           remaining_args.push arg
         end
       end
@@ -225,13 +229,17 @@ private
         opt_match, @option_map = find_option_matches(options[i])
         if opt_match.nil?
           remaining_args.push orig_opt
+          if @options[:require_order]
+            remaining_args.push(*args)
+            return option_result, remaining_args, []
+          end
           return option_result, remaining_args, args
         end
         # Only pass argument to the last option in the options array
         args.unshift argument unless argument.nil? || argument == "" || i < (options.size - 1)
-        debug "new args: #{args}"
+        @log.debug "new args: #{args}"
         option_result, args = execute_option(opt_match, option_result, args)
-        debug "option_result: #{option_result}"
+        @log.debug "option_result: #{option_result}"
       end
       return option_result, remaining_args, args
     end
@@ -254,7 +262,7 @@ private
               # Update the given hash
               hash[k][:negated] = true
               local_matches.push name
-              debug "hash: #{hash}"
+              @log.debug "hash: #{hash}"
             end
           end
         end
@@ -278,14 +286,14 @@ private
         if @options[:fail_on_unknown]
           abort "[ERROR] Option '#{opt}' not found!"
         else
-          debug "Option '#{opt}' not found!"
+          @log.debug "Option '#{opt}' not found!"
           $stderr.puts "[WARNING] Option '#{opt}' not found!" unless @options[:pass_through]
           return [nil, @option_map]
         end
       elsif matches.size > 1
         abort "[ERROR] option '#{opt}' matches multiple names '#{matches.sort.inspect}'!"
       end
-      debug "matches: #{matches}"
+      @log.debug "matches: #{matches}"
       [matches[0], @option_map]
     end
 
@@ -293,13 +301,13 @@ private
     #       Fail during init and not during run time.
     def self.execute_option(opt_match, option_result, args)
       opt_def = @option_map[opt_match]
-      debug "#{opt_def[:arg_spec]}"
+      @log.debug "#{opt_def[:arg_spec]}"
       case opt_def[:arg_spec]
       when 'flag'
         if opt_def[:opt_dest].kind_of? Symbol
           option_result[opt_def[:opt_dest]] = true
         else
-          debug "Flag definition is a function"
+          @log.debug "Flag definition is a function"
           opt_def[:opt_dest].call
         end
       when 'nflag'
@@ -374,7 +382,7 @@ private
         min = opt_def[:arg_opts][2][0]
         max = opt_def[:arg_opts][2][1]
         while min > 0
-          debug "min: #{min}, max: #{max}"
+          @log.debug "min: #{min}, max: #{max}"
           min -= 1
           max -= 1
           abort "[ERROR] missing argument for option '#{opt_match[0]}'!" if args.size <= 0
@@ -387,7 +395,7 @@ private
           end
         end
         while max > 0
-          debug "min: #{min}, max: #{max}"
+          @log.debug "min: #{min}, max: #{max}"
           max -= 1
           break if args.size <= 0
           if type == Array
@@ -412,8 +420,13 @@ private
     end
 
     def self.process_desttype_arg(args, opt_match, optional, required = false)
-      if !args[0].nil? && option?(args[0])
-        debug "args[0] option"
+      # If this arg exists, is required, and is string type, just use it
+      if !args[0].nil? &&
+         @option_map[opt_match][:arg_opts][0] == 's' &&
+         !optional
+        arg = process_option_type(args.shift, opt_match, optional)
+      elsif !args[0].nil? && option?(args[0])
+        @log.debug "args[0] option"
         if required
           return args, nil
         end
@@ -421,9 +434,9 @@ private
       else
         arg = process_option_type(args.shift, opt_match, optional)
       end
-      debug "arg: '#{arg}'"
+      @log.debug "arg: '#{arg}'"
       if arg.nil?
-        debug "arg is nil"
+        @log.debug "arg is nil"
         abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       [args, arg]
@@ -440,11 +453,11 @@ private
       else
         abort "[ERROR] argument for option '#{opt_match[0]}' must be of type key=value!"
       end
-      debug "key: '#{key}', arg: '#{arg}'"
+      @log.debug "key: '#{key}', arg: '#{arg}'"
       arg = process_option_type(arg, opt_match, optional)
-      debug "arg: '#{arg}'"
+      @log.debug "arg: '#{arg}'"
       if arg.nil?
-        debug "arg is nil"
+        @log.debug "arg is nil"
         abort "[ERROR] missing argument for option '#{opt_match[0]}'!"
       end
       [args, arg, key]
@@ -460,7 +473,7 @@ private
 
     def self.option?(arg)
       result = !!(IS_OPTION_REGEX =~ arg)
-      debug "Is option? '#{arg}' #{result}"
+      @log.debug "Is option? '#{arg}' #{result}"
       result
     end
 
